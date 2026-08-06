@@ -1,0 +1,81 @@
+const cloudinary = require("../utils/cloudinary");
+const documentRepository = require("../repositories/documentRepository");
+const { createActivity } = require("../services/activityService");
+
+const createDocument = async (req, res) => {
+  try {
+    const newDocument = await documentRepository.create({
+      tin_number: req.body.TinNumber,
+      images: req.body.images,
+      id_card_images: req.body.idCardImages,
+      postedbyuserid: req.body.PostedByuserId,
+    });
+
+    await createActivity({
+      action: "Create Document",
+      resource: "Document",
+      resourceId: newDocument._id,
+      user: newDocument.PostedByuserId,
+      details: { newDocument },
+    });
+
+    res.status(201).json({ success: true, data: newDocument });
+  } catch (error) {
+    res.status(400).json({ success: false, message: "Error creating document", error: error.message });
+  }
+};
+
+const getDocuments = async (req, res) => {
+  try {
+    const documents = await documentRepository.findPending();
+    if (!documents.length) {
+      return res.status(404).json({ success: false, message: "No documents found with status not approved." });
+    }
+    return res.status(200).json({ success: true, data: documents });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+  }
+};
+
+const updateDocumentStatus = async (req, res) => {
+  try {
+    if (!req.body.status) return res.status(400).json({ message: "Status is required." });
+    const updatedDocument = await documentRepository.updateById(req.params.id, { status: req.body.status });
+    if (!updatedDocument) return res.status(404).json({ message: "Document not found." });
+    await createActivity({
+      action: "Update Document",
+      resource: "Document",
+      resourceId: updatedDocument._id,
+      user: updatedDocument.PostedByuserId,
+      details: { updatedDocument },
+    });
+    res.status(200).json({ message: "Document status updated successfully.", document: updatedDocument });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+const uploadImage = async (req, res) => {
+  try {
+    const uploadedImages = [];
+    for (const file of req.files) {
+      const result = await cloudinary.uploader.upload(file.path, { folder: "documents" });
+      uploadedImages.push({ public_id: result.public_id, secure_url: result.secure_url });
+    }
+    res.status(200).json({ success: true, payload: uploadedImages });
+  } catch (error) {
+    res.status(400).json({ success: false, message: "Image upload failed", error: error.message });
+  }
+};
+
+const deleteImage = async (req, res) => {
+  try {
+    const result = await cloudinary.uploader.destroy(req.params.id);
+    if (result.result !== "ok") throw new Error("Failed to delete image");
+    res.status(200).json({ success: true, message: "Image deleted successfully" });
+  } catch (error) {
+    res.status(400).json({ success: false, message: "Image deletion failed", error: error.message });
+  }
+};
+
+module.exports = { createDocument, uploadImage, deleteImage, getDocuments, updateDocumentStatus };

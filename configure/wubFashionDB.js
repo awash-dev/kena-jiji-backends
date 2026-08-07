@@ -7,11 +7,11 @@ const connectionString =
   process.env.DATABASE_URL || process.env.Postgres_URL || process.env.POSTGRES_URL;
 
 if (!connectionString) {
-  throw new Error("DATABASE_URL is not configured");
+  console.warn("DATABASE_URL is not configured in environment variables.");
 }
 
 const pool = new Pool({
-  connectionString,
+  connectionString: connectionString || undefined,
   ssl: {
     rejectUnauthorized: false,
   },
@@ -43,19 +43,28 @@ const initializeSchema = async () => {
   }
 
   const schemaPath = path.join(__dirname, "..", "db", "schema.sql");
-  const schemaSql = fs.readFileSync(schemaPath, "utf8");
-  await pool.query(schemaSql);
-  schemaInitialized = true;
+  if (fs.existsSync(schemaPath)) {
+    const schemaSql = fs.readFileSync(schemaPath, "utf8");
+    await pool.query(schemaSql);
+    schemaInitialized = true;
+  }
 };
 
 const connectDB = async () => {
   try {
+    if (!connectionString) {
+      console.error("PostgreSQL connection error: DATABASE_URL is missing.");
+      return;
+    }
     await pool.query("SELECT 1");
     await initializeSchema();
-    console.log("PostgreSQL connected");
+    console.log("PostgreSQL connected successfully");
   } catch (error) {
-    console.error("PostgreSQL connection error:", error);
-    process.exit(1);
+    console.error("PostgreSQL connection error:", error.message);
+    if (!process.env.VERCEL) {
+      // Don't crash process in Vercel environment
+      console.warn("Continuing server execution despite DB connection error...");
+    }
   }
 };
 

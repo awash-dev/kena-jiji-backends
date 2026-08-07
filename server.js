@@ -9,6 +9,7 @@ const multer = require("multer");
 const path = require("path");
 const fs = require('fs');
 const morgan = require("morgan"); // Optional: For logging
+
 const UserRouter = require('./routes/userRoutes');
 const ProductRouter = require('./routes/productRoutes');
 const BrandRouter = require("./routes/brandRoutes");
@@ -26,26 +27,24 @@ const NotificationRouter = require("./routes/notificationRoutes");
 const PaymentRouter = require("./routes/paymentRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const wishlistRoutes = require('./routes/wishlistRoutes');
-//const deliveryRoutes = require('./routes/delivery');
 const deliveryRoute = require('./api/delivery/route/userRoutes');
-const SizeRoute = require("./routes/sizeRoutes")
+const SizeRoute = require("./routes/sizeRoutes");
 
-//new
+// New routes
 const PromotionRoute = require("./routes/promotionRoutes");
 const ReportIssue = require("./routes/ReportRoute");
 const StoreRoute = require("./routes/storeRoute");
 const ActivityRoute = require("./routes/ActivityRoutes");
-const DocumentRoute = require("./routes/documentRouter")
-
+const DocumentRoute = require("./routes/documentRouter");
 const RegisterRoutes = require("./routes/registerRoutes");
 const MessageRouter = require("./routes/messageRoutes");
 const ConversationRoute = require("./routes/conversationRoutes");
 const PackageRoute = require("./routes/packageRouter");
 const ChatRoutes = require("./routes/chatroutes");
 
-//const http = require("http");
-//const { Server } = require("socket.io");
+dotenv.config();
 
+const PORT = process.env.PORT || 4000;
 
 // CORS Configuration
 app.use(cors({
@@ -55,14 +54,6 @@ app.use(cors({
     methods: 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
     credentials: true,
 }));
-
-
-dotenv.config();
-
-
-const PORT = process.env.PORT || 4000;
-
-
 
 // Handle preflight requests
 app.options('*', cors({
@@ -76,21 +67,23 @@ app.options('*', cors({
 connectDB();
 
 // Optional: Use morgan for logging HTTP requests
-app.use(morgan('combined'));
-
-
-
-
-app.get("/", (req, res) => {
-    res.send("Welcome to Merkato Shop API");
-});
-
-
+if (process.env.NODE_ENV !== 'production') {
+    app.use(morgan('dev'));
+}
 
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
+
+// Root welcome route
+app.get("/", (req, res) => {
+    res.json({
+        success: true,
+        message: "Welcome to kena Shop API",
+        version: "1.0.0"
+    });
+});
 
 // API Routes
 app.use("/api/user", UserRouter);
@@ -113,30 +106,30 @@ app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/delivery', deliveryRoute);
 app.use("/api/size", SizeRoute);
 
-
-//new
 app.use("/api/store", StoreRoute);
 app.use("/api/promotion", PromotionRoute);
 app.use("/api/report", ReportIssue);
 app.use("/api/user", RegisterRoutes);
 app.use("/api/activity", ActivityRoute);
 app.use("/api/document", DocumentRoute);
-
 app.use("/api/converstion", ConversationRoute);
 app.use("/api/package", PackageRoute);
-
 app.use("/api/chat", ChatRoutes);
 app.use("/api/message", MessageRouter);
 
-
-// Serve Static Files
+// Serve Static Files safely (handles Vercel read-only filesystem)
 const buildPath = path.join(__dirname, 'build');
-app.use(express.static(buildPath));
+if (fs.existsSync(buildPath)) {
+    app.use(express.static(buildPath));
+}
 
-// Ensure the upload directory exists
 const uploadDir = path.join(__dirname, 'upload/images');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
+try {
+    if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+    }
+} catch (e) {
+    console.warn('Upload directory creation skipped (read-only filesystem):', e.message);
 }
 
 // Multer configuration for file uploads
@@ -155,72 +148,88 @@ app.use('/images', express.static(uploadDir));
 
 // Upload endpoint
 app.post("/upload", upload.single('product'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ success: 0, message: "No file uploaded" });
+    }
     res.json({
         success: 1,
-        image_url: `http://localhost:${PORT}/images/${req.file.filename}`
+        image_url: `/images/${req.file.filename}`
     });
 });
 
-// 404 Handler (should come after all other routes)
+// 404 Handler for API routes
+app.use("/api/*", (req, res) => {
+    res.status(404).json({
+        success: false,
+        status: 'fail',
+        message: `API Route Not Found: ${req.originalUrl}`
+    });
+});
+
+// Generic 404 Handler
 app.use((req, res, next) => {
-    res.status(404).send({
+    if (fs.existsSync(path.join(buildPath, 'index.html'))) {
+        return res.sendFile(path.join(buildPath, 'index.html'));
+    }
+    res.status(404).json({
+        success: false,
         status: 'fail',
         message: `Not Found: ${req.originalUrl}`
     });
 });
 
-// Error Handler Middleware
+// Global Error Handler Middleware (500)
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    // Respect a status code set by the route (e.g. res.status(401)); default to 500.
-    const statuscode = res.statusCode === 200 ? 500 : res.statusCode;
-    res.status(statuscode).send({ status: 'fail', message: err.message });
+    console.error('Unhandled Server Error:', err.stack || err);
+    const statusCode = res.statusCode && res.statusCode !== 200 ? res.statusCode : 500;
+    res.status(statusCode).json({
+        success: false,
+        status: 'error',
+        message: err.message || 'Internal Server Error',
+        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    });
 });
 
-// Catch-all Route to Serve React's index.html for Client-Side Routing
-app.get('*', (req, res) => {
-    res.sendFile(path.join(buildPath, 'index.html'));
-});
+// Export app for Vercel Serverless deployment
+module.exports = app;
 
-// Start the Server
-const server = app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
-
-const io = require("socket.io")(server, {
-    cors: {
-        origin: [
-            'http://localhost:3000',
-            'http://localhost:3001',
-            'http://localhost:51650',
-            "https://www.stock.kefaycard.com/",
-            "https://stock.kefaycard.com/"]
-    }
-});
-
-
-io.on("connection", (socket) => {
-    socket.on("setup", (userData) => {
-        socket.join(userData._id);
-        socket.emit("connected")
-    })
-
-    socket.on("join chat", (room) => {
-        socket.join(room)
-
-    })
-
-    socket.on("new message", (newMessageRec) => {
-        var chat = newMessageRec.chat;
-        if (!chat.users) return console.log("chat user not defined");
-
-        chat.users.forEach(user => {
-            if (user != newMessageRec.sender._id) {
-                socket.in(user).emit("message received", newMessageRec);
-            }
-        });
+// Start server locally if not running on Vercel
+if (!process.env.VERCEL) {
+    const server = app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
     });
 
+    const io = require("socket.io")(server, {
+        cors: {
+            origin: [
+                'http://localhost:3000',
+                'http://localhost:3001',
+                'http://localhost:51650',
+                "https://www.stock.kefaycard.com/",
+                "https://stock.kefaycard.com/"
+            ]
+        }
+    });
 
+    io.on("connection", (socket) => {
+        socket.on("setup", (userData) => {
+            socket.join(userData._id);
+            socket.emit("connected");
+        });
 
-});
+        socket.on("join chat", (room) => {
+            socket.join(room);
+        });
+
+        socket.on("new message", (newMessageRec) => {
+            var chat = newMessageRec.chat;
+            if (!chat.users) return console.log("chat user not defined");
+
+            chat.users.forEach(user => {
+                if (user != newMessageRec.sender._id) {
+                    socket.in(user).emit("message received", newMessageRec);
+                }
+            });
+        });
+    });
+}

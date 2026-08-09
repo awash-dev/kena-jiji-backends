@@ -46,6 +46,7 @@ async function runMigration() {
       ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method TEXT NOT NULL DEFAULT 'chapa';
       ALTER TABLE orders ADD COLUMN IF NOT EXISTS bank_receipt_url TEXT;
       ALTER TABLE orders ADD COLUMN IF NOT EXISTS admin_approval_status TEXT NOT NULL DEFAULT 'approved';
+      ALTER TABLE blogs ADD COLUMN IF NOT EXISTS is_popup BOOLEAN NOT NULL DEFAULT FALSE;
     `);
     console.log("Migrations applied successfully!");
     process.exit(0);

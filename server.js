@@ -85,6 +85,9 @@ app.get("/", (req, res) => {
     });
 });
 
+const PaymentSettingsRouter = require("./routes/paymentSettingsRoutes");
+const MerchantPayoutRouter = require("./routes/merchantPayoutRoutes");
+
 // API Routes
 app.use("/api/user", UserRouter);
 app.use('/api/product', ProductRouter);
@@ -101,6 +104,8 @@ app.use("/api/coupon", couponRouter);
 app.use("/api/enquiry", FqaRouter);
 app.use("/api/notifications", NotificationRouter);
 app.use("/api/payment", PaymentRouter);
+app.use("/api/payment-settings", PaymentSettingsRouter);
+app.use("/api/merchant-payout", MerchantPayoutRouter);
 app.use("/api/cart", cartRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/delivery', deliveryRoute);

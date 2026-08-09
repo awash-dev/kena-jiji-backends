@@ -8,12 +8,12 @@ const {
     deactivatePromotion,
     getPromotionsByProductId,
 } = require("../controllers/promotionController");
-const { isAdmin, authMiddleware } = require("../middlewares/authMiddleware");
+const { isSuperAdminOrAdmin, authMiddleware } = require("../middlewares/authMiddleware");
 
-router.post("/", isAdmin, createPromotion);
-router.put("/:id", isAdmin, updatePromotion);
+router.post("/", authMiddleware, isSuperAdminOrAdmin, createPromotion);
+router.put("/:id", authMiddleware, isSuperAdminOrAdmin, updatePromotion);
 router.get("/:id", getPromotionById);
 router.get("/", getAllPromotions);
-router.patch("/deactivate/:id",  isAdmin, deactivatePromotion);
+router.patch("/deactivate/:id",  authMiddleware, isSuperAdminOrAdmin, deactivatePromotion);
 router.get("/product/:productId", getPromotionsByProductId);
 module.exports = router;

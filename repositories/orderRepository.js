@@ -24,6 +24,9 @@ const writableFields = [
   "callback_url",
   "return_url",
   "currency",
+  "payment_method",
+  "bank_receipt_url",
+  "admin_approval_status",
 ];
 
 const buildAssignments = (payload, startIndex = 1) => {

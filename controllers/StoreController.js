@@ -38,8 +38,26 @@ const getStoresByUser = async (req, res) => {
   }
 };
 
+// Merchants may only update/delete stores they own; admins may manage any.
+const assertStoreOwnership = async (req, storeId) => {
+  if (req.user?.role !== "merchant") return;
+  const store = await storeRepository.findById(storeId);
+  if (!store) {
+    const err = new Error("Store not found");
+    err.status = 404;
+    throw err;
+  }
+  const ownerId = store.owner_id?._id || store.owner_id;
+  if (ownerId && ownerId.toString() !== req.user._id.toString()) {
+    const err = new Error("You can only manage your own stores.");
+    err.status = 403;
+    throw err;
+  }
+};
+
 const updateStore = asyncHandler(async (req, res) => {
   validateMongoDbId(req.params.id);
+  await assertStoreOwnership(req, req.params.id);
   const updatedStore = await storeRepository.updateById(req.params.id, {
     store_name: req.body.storeName,
     address: req.body.address,
@@ -58,6 +76,7 @@ const updateStore = asyncHandler(async (req, res) => {
 
 const deleteStore = asyncHandler(async (req, res) => {
   validateMongoDbId(req.params.id);
+  await assertStoreOwnership(req, req.params.id);
   const deletedStore = await storeRepository.deleteById(req.params.id);
   if (!deletedStore) return res.status(404).json({ message: "Store not found" });
 

@@ -8,14 +8,14 @@ const {
     getStoresByUser,
 } = require("../controllers/StoreController");
 
-const { authMiddleware, isAdmin } = require("../middlewares/authMiddleware");
+const { authMiddleware, isSuperAdminOrMerchant } = require("../middlewares/authMiddleware");
 
 const router = express.Router();
 router.post("/",  createStore);
 router.get("/:id", getStore);
 router.get("/storeList/:id", getStoresByUser);
-router.put("/:id",authMiddleware, isAdmin,updateStore);
-router.delete("/:id", authMiddleware, isAdmin, deleteStore);
+router.put("/:id",authMiddleware, isSuperAdminOrMerchant, updateStore);
+router.delete("/:id", authMiddleware, isSuperAdminOrMerchant, deleteStore);
 
 
 router.get("/", getallStore);

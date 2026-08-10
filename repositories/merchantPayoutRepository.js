@@ -2,24 +2,47 @@ const db = require("../configure/wubFashionDB");
 const { serializeRow, serializeRows } = require("../services/sqlHelpers");
 
 // Merchant Bank Account Methods
-const getBankAccount = async (merchantId) => {
+const getBankAccounts = async (merchantId) => {
   const result = await db.query(
-    "SELECT * FROM merchant_bank_accounts WHERE merchant_id = $1",
+    "SELECT * FROM merchant_bank_accounts WHERE merchant_id = $1 ORDER BY created_at DESC",
     [merchantId]
+  );
+  return serializeRows(result.rows);
+};
+
+const addBankAccount = async (merchantId, { bank_name, account_number, account_holder_name }) => {
+  // Check if they have any accounts, if not make this one default
+  const countRes = await db.query("SELECT COUNT(*) FROM merchant_bank_accounts WHERE merchant_id = $1", [merchantId]);
+  const isDefault = countRes.rows[0].count === '0';
+  
+  const result = await db.query(
+    `INSERT INTO merchant_bank_accounts (merchant_id, bank_name, account_number, account_holder_name, is_default)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING *`,
+    [merchantId, bank_name, account_number, account_holder_name, isDefault]
   );
   return serializeRow(result.rows[0]);
 };
 
-const upsertBankAccount = async (merchantId, { bank_name, account_number, account_holder_name }) => {
-  const result = await db.query(
-    `INSERT INTO merchant_bank_accounts (merchant_id, bank_name, account_number, account_holder_name)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (merchant_id)
-     DO UPDATE SET bank_name = EXCLUDED.bank_name, account_number = EXCLUDED.account_number, account_holder_name = EXCLUDED.account_holder_name, updated_at = NOW()
-     RETURNING *`,
-    [merchantId, bank_name, account_number, account_holder_name]
-  );
+const setDefaultBankAccount = async (merchantId, accountId) => {
+  // set all to false
+  await db.query("UPDATE merchant_bank_accounts SET is_default = FALSE WHERE merchant_id = $1", [merchantId]);
+  // set target to true
+  const result = await db.query("UPDATE merchant_bank_accounts SET is_default = TRUE WHERE merchant_id = $1 AND id = $2 RETURNING *", [merchantId, accountId]);
   return serializeRow(result.rows[0]);
+};
+
+const deleteBankAccount = async (merchantId, accountId) => {
+  await db.query("DELETE FROM merchant_bank_accounts WHERE merchant_id = $1 AND id = $2", [merchantId, accountId]);
+  
+  // if no default exists but they still have accounts, set oldest as default
+  const checkRes = await db.query("SELECT id FROM merchant_bank_accounts WHERE merchant_id = $1 AND is_default = TRUE", [merchantId]);
+  if (checkRes.rows.length === 0) {
+    await db.query(`
+      UPDATE merchant_bank_accounts SET is_default = TRUE 
+      WHERE id = (SELECT id FROM merchant_bank_accounts WHERE merchant_id = $1 ORDER BY created_at ASC LIMIT 1)
+    `, [merchantId]);
+  }
 };
 
 // Merchant Sales Ledger & Earnings
@@ -124,8 +147,10 @@ const updateWithdrawalStatus = async (id, status, rejectionReason = null) => {
 };
 
 module.exports = {
-  getBankAccount,
-  upsertBankAccount,
+  getBankAccounts,
+  addBankAccount,
+  setDefaultBankAccount,
+  deleteBankAccount,
   getMerchantCashSales,
   createWithdrawalRequest,
   getWithdrawalById,

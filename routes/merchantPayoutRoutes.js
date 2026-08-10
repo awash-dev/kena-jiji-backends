@@ -1,8 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const {
-  getMerchantBankAccount,
-  saveMerchantBankAccount,
+  getMerchantBankAccounts,
+  addMerchantBankAccount,
+  setDefaultBankAccount,
+  deleteMerchantBankAccount,
   getMerchantCashSales,
   requestWithdrawal,
   getPendingOrdersForAdmin,
@@ -15,8 +17,10 @@ const {
 const { authMiddleware, isAdmin } = require("../middlewares/authMiddleware");
 
 // Merchant Routes
-router.get("/bank-account", authMiddleware, getMerchantBankAccount);
-router.post("/bank-account", authMiddleware, saveMerchantBankAccount);
+router.get("/bank-account", authMiddleware, getMerchantBankAccounts);
+router.post("/bank-account", authMiddleware, addMerchantBankAccount);
+router.put("/bank-account/:id/default", authMiddleware, setDefaultBankAccount);
+router.delete("/bank-account/:id", authMiddleware, deleteMerchantBankAccount);
 router.get("/cash-sales", authMiddleware, getMerchantCashSales);
 router.post("/withdrawals", authMiddleware, requestWithdrawal);
 

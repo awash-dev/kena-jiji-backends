@@ -9,22 +9,43 @@
 [USER #4] Role: MERCHANT | Name: Bole Boutique | Email: merchant2@donsa.com | Mobile: +251900000004 | Pass: Password@123 | ID: 3f0ae2c4-485f-4f4f-8a0a-2f3851e32116
 [USER #5] Role: USER | Name: Abebe Bikila | Email: client@donsa.com | Mobile: +251900000005 | Pass: Password@123 | ID: c360a987-11ca-47bd-a6f0-8741fa94ad22
 
---- 2. PRODUCTS (5 OF 5) ---
+--- 2. SHOP CATEGORIES (5 OF 5) ---
+[CATEGORY #1] Title: Fashion | ID: 2dd863f1-13ac-4c7e-bfd1-0c99791a82ed
+[CATEGORY #2] Title: Footwear | ID: 97dbf001-def0-420e-8e7b-26b2045ef784
+[CATEGORY #3] Title: Electronics | ID: 662766f4-06cb-4779-ae4f-235a796a53ac
+[CATEGORY #4] Title: Home & Living | ID: add83e83-6a43-450d-a58c-9b86028392af
+[CATEGORY #5] Title: Beauty & Cosmetics | ID: ce37b491-a61b-4f6c-809e-c6b0af9b8b34
+
+--- 3. BRANDS (5 OF 5) ---
+[BRAND #1] Title: Gucci | ID: 7c996473-df07-48d6-8ab1-6123d10e9cc4
+[BRAND #2] Title: Nike | ID: 5593ca08-7c24-42ab-b720-9151c2701dbd
+[BRAND #3] Title: Zara | ID: 8c51c59f-1c2b-4aff-8a7a-cb6177ae9169
+[BRAND #4] Title: Samsung | ID: 56731ff9-505f-4290-bbef-04d55d421be1
+[BRAND #5] Title: Apple | ID: f164cf97-a36b-4a94-b498-6fae2b859df2
+
+--- 4. SUBCATEGORIES (5 OF 5) ---
+[SUBCATEGORY #1] Title: Bags | ID: 24a4d17b-c8a2-45bc-b152-a7497119d2b7
+[SUBCATEGORY #2] Title: Sneakers | ID: b1268343-ef47-48a1-a8c2-d355af1dc6e5
+[SUBCATEGORY #3] Title: Dresses | ID: 84d66b73-e76c-44a9-8550-f5a8759693ef
+[SUBCATEGORY #4] Title: Mobiles | ID: 00915944-9a9e-4d64-8ca4-2adde22e6f72
+[SUBCATEGORY #5] Title: Laptops | ID: 49de1fa9-e482-4ce7-a2de-33b398ec6606
+
+--- 5. PRODUCTS (5 OF 5) ---
 [PRODUCT #1] Title: Gucci Leather Shoulder Bag | Price: 4500.00 ETB | Category: Fashion | ID: 10f4e2a4-7c81-448c-a7bd-d627e9163bfa
 [PRODUCT #2] Title: Nike Air Jordan High Retro | Price: 6200.00 ETB | Category: Footwear | ID: e0d69297-10e5-4ae2-9954-cb84b1e002e5
 [PRODUCT #3] Title: Designer Silk Summer Dress | Price: 3200.00 ETB | Category: Fashion | ID: fa2217e3-fa7b-45e9-be18-b5ee78627c51
 [PRODUCT #4] Title: Samsung Galaxy S24 Ultra | Price: 85000.00 ETB | Category: Electronics | ID: 1989a7ff-675e-47ab-8a9f-da7c1adcd8c8
 [PRODUCT #5] Title: Apple MacBook Pro 16 M3 Max | Price: 145000.00 ETB | Category: Electronics | ID: 5c8bf950-3b9a-4481-97f9-5f4da39844e1
 
---- 3. ORDERS (5 OF 5) ---
-[ORDER #1] Ref: TX-COD-1786527795965-1 | Status: PLACED | Method: Cash on Delivery | Total: 4500 ETB | Order ID: 622aec91-6053-48fb-aea1-8a5dd14be0e6
-[ORDER #2] Ref: TX-CBE-1786527795965-2 | Status: PENDING | Method: Bank Transfer (CBE) | Total: 6200 ETB | Order ID: 6f5fd9d1-7813-4dbe-8375-91a74edb7e48
+--- 6. ORDERS (5 OF 5) ---
+[ORDER #1] Ref: TX-COD-1786530406372-1 | Status: PLACED | Method: Cash on Delivery | Total: 4500 ETB | Order ID: 47fdeee5-a183-4a5d-b9e0-1e1b19e4b29d
+[ORDER #2] Ref: TX-CBE-1786530406372-2 | Status: PENDING | Method: Bank Transfer (CBE) | Total: 6200 ETB | Order ID: 41372940-f7be-49e8-9778-175aee943349
   └─ Bank Transfer Receipt Image: https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600&auto=format&fit=crop&q=80
-[ORDER #3] Ref: TX-TELEBIRR-1786527795965-3 | Status: CONFIRMED | Method: Telebirr | Total: 3200 ETB | Order ID: 4d3069cd-4d91-499d-9dcb-02ed23783f3f
-[ORDER #4] Ref: TX-BOA-1786527795965-4 | Status: DELIVERED | Method: Bank Transfer (Bank of Abyssinia) | Total: 85000 ETB | Order ID: b70b4430-7a69-4d72-b470-1c5ebf9ca1b4
+[ORDER #3] Ref: TX-TELEBIRR-1786530406372-3 | Status: CONFIRMED | Method: Telebirr | Total: 3200 ETB | Order ID: c5aafb1c-fdb6-4f32-84c0-77b8ad395b86
+[ORDER #4] Ref: TX-BOA-1786530406372-4 | Status: DELIVERED | Method: Bank Transfer (Bank of Abyssinia) | Total: 85000 ETB | Order ID: fc904a71-d55b-4678-a7aa-796a4f5ab7d8
   └─ Bank Transfer Receipt Image: https://images.unsplash.com/photo-1554224154-26032ffc0d07?w=600&auto=format&fit=crop&q=80
-[ORDER #5] Ref: TX-CHAPA-1786527795965-5 | Status: COMPLETED | Method: Chapa Payment Gateway | Total: 145000 ETB | Order ID: a204ff09-92eb-4c5c-9df7-41dace207a15
+[ORDER #5] Ref: TX-CHAPA-1786530406372-5 | Status: COMPLETED | Method: Chapa Payment Gateway | Total: 145000 ETB | Order ID: bdf1e402-10eb-45aa-af0a-20bf393a6ade
 
 ======================================================================
-          DATABASE SEED COMPLETE: ALL 5/5 RECORDS CREATED           
+          DATABASE SEED COMPLETE: ALL RECORDS CREATED           
 ======================================================================

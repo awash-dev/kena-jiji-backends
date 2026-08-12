@@ -106,6 +106,7 @@ app.use("/api/notifications", NotificationRouter);
 app.use("/api/payment", PaymentRouter);
 app.use("/api/payment-settings", PaymentSettingsRouter);
 app.use("/api/merchant-payout", MerchantPayoutRouter);
+app.use("/api/payout", MerchantPayoutRouter);
 app.use("/api/cart", cartRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/delivery', deliveryRoute);

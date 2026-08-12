@@ -1,11 +1,45 @@
-# Dependencies
+# ==========================================
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+
+# Android specific
+/android/app/debug
+/android/app/profile
+/android/app/release
+/android/.gradle
+*.jks
+*.keystore
+
+# iOS specific
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/DerivedData/
+**/Mac/Pods/
+**/Mac/.symlinks/
+**/Mac/DerivedData/
+
+# Symbolication & Obfuscation
+app.*.symbols
+app.*.map.json
+
+# ==========================================
+# 2. Node.js Dependencies
+# ==========================================
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 package-lock.json
 
-# Environment variables & secrets
+# ==========================================
+# 3. Environment Variables & Secrets
+# ==========================================
 .env
 .env.local
 .env.development
@@ -14,22 +48,29 @@ package-lock.json
 *.pem
 *.key
 
-# Logs & Databases
+# ==========================================
+# 4. Logs & Databases
+# ==========================================
 logs/
 *.log
 *.sqlite
 *.db
 
-# OS Generated
+# ==========================================
+# 5. OS Generated
+# ==========================================
 .DS_Store
 .DS_Store?
 ._*
 Thumbs.db
 ehthumbs.db
 
-# IDEs & Editors
+# ==========================================
+# 6. IDEs & Editors
+# ==========================================
 .idea/
 .vscode/
 *.swp
 *.bak
 *.tmp
+*.iml

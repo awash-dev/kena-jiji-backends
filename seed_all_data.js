@@ -4,6 +4,7 @@ const userRepository = require("./repositories/userRepository");
 const storeRepository = require("./repositories/storeRepository");
 const productRepository = require("./repositories/productRepository");
 const orderRepository = require("./repositories/orderRepository");
+const { productCategoryRepository, brandRepository, productSubcategoryRepository } = require("./repositories/catalogRepositories");
 const db = require("./configure/wubFashionDB");
 const { hashPassword } = require("./services/passwordService");
 const { v4: uuidv4 } = require("uuid");
@@ -96,8 +97,12 @@ const sampleUsers = [
   },
 ];
 
+const sampleCategories = ["Fashion", "Footwear", "Electronics", "Home & Living", "Beauty & Cosmetics"];
+const sampleBrands = ["Gucci", "Nike", "Zara", "Samsung", "Apple"];
+const sampleSubcategories = ["Bags", "Sneakers", "Dresses", "Mobiles", "Laptops"];
+
 async function seedAll() {
-  console.log("Starting full database seed (5 Users, 5 Products, 5 Orders)...");
+  console.log("Starting full database seed (Categories, Brands, Users, Products, Orders)...");
   let logOutput = "======================================================================\n";
   logOutput += "            ETHIO-MERKATO PLATFORM MASTER SEED DATA                   \n";
   logOutput += "======================================================================\n\n";
@@ -132,12 +137,77 @@ async function seedAll() {
     logOutput += `[USER #${i + 1}] Role: ${u.role.toUpperCase()} | Name: ${u.firstname} ${u.lastname} | Email: ${u.email} | Mobile: ${u.mobile} | Pass: ${u.password} | ID: ${userId}\n`;
   }
 
+  const superAdmin = createdUsers.find((u) => u.role === "superAdmin") || createdUsers[0];
+  const superAdminId = superAdmin._id || superAdmin.id;
   const merchant1 = createdUsers.find((u) => u.email === "merchant@donsa.com") || createdUsers[2];
   const merchant1Id = merchant1._id || merchant1.id;
   const clientUser = createdUsers.find((u) => u.email === "client@donsa.com") || createdUsers[4];
   const clientUserId = clientUser._id || clientUser.id;
 
-  // 2. Create Store
+  // 2. Seed Product Categories
+  logOutput += "\n--- 2. SHOP CATEGORIES (5 OF 5) ---\n";
+  for (let i = 0; i < sampleCategories.length; i++) {
+    const title = sampleCategories[i];
+    try {
+      const res = await db.query("SELECT * FROM product_categories WHERE title = $1 LIMIT 1", [title]);
+      let catId;
+      if (res.rows.length > 0) {
+        catId = res.rows[0].id;
+      } else {
+        const cat = await productCategoryRepository.create({ title, postedbyuserid: superAdminId });
+        catId = cat._id || cat.id;
+      }
+      console.log(`Category #${i + 1}: ${title} (${catId})`);
+      logOutput += `[CATEGORY #${i + 1}] Title: ${title} | ID: ${catId}\n`;
+    } catch (e) {
+      console.log(`Category #${i + 1}: ${title}`);
+      logOutput += `[CATEGORY #${i + 1}] Title: ${title}\n`;
+    }
+  }
+
+  // 3. Seed Brands
+  logOutput += "\n--- 3. BRANDS (5 OF 5) ---\n";
+  for (let i = 0; i < sampleBrands.length; i++) {
+    const title = sampleBrands[i];
+    try {
+      const res = await db.query("SELECT * FROM brands WHERE title = $1 LIMIT 1", [title]);
+      let brandId;
+      if (res.rows.length > 0) {
+        brandId = res.rows[0].id;
+      } else {
+        const b = await brandRepository.create({ title, postedbyuserid: superAdminId });
+        brandId = b._id || b.id;
+      }
+      console.log(`Brand #${i + 1}: ${title} (${brandId})`);
+      logOutput += `[BRAND #${i + 1}] Title: ${title} | ID: ${brandId}\n`;
+    } catch (e) {
+      console.log(`Brand #${i + 1}: ${title}`);
+      logOutput += `[BRAND #${i + 1}] Title: ${title}\n`;
+    }
+  }
+
+  // 4. Seed Subcategories
+  logOutput += "\n--- 4. SUBCATEGORIES (5 OF 5) ---\n";
+  for (let i = 0; i < sampleSubcategories.length; i++) {
+    const title = sampleSubcategories[i];
+    try {
+      const res = await db.query("SELECT * FROM product_subcategories WHERE title = $1 LIMIT 1", [title]);
+      let subId;
+      if (res.rows.length > 0) {
+        subId = res.rows[0].id;
+      } else {
+        const sub = await productSubcategoryRepository.create({ title, postedbyuserid: superAdminId });
+        subId = sub._id || sub.id;
+      }
+      console.log(`Subcategory #${i + 1}: ${title} (${subId})`);
+      logOutput += `[SUBCATEGORY #${i + 1}] Title: ${title} | ID: ${subId}\n`;
+    } catch (e) {
+      console.log(`Subcategory #${i + 1}: ${title}`);
+      logOutput += `[SUBCATEGORY #${i + 1}] Title: ${title}\n`;
+    }
+  }
+
+  // 5. Create Store
   let stores = await storeRepository.findByOwnerId(merchant1Id);
   let mainStore;
   if (!stores || stores.length === 0) {
@@ -152,8 +222,8 @@ async function seedAll() {
   }
   const storeId = mainStore._id || mainStore.id;
 
-  // 3. Seed 5 Products
-  logOutput += "\n--- 2. PRODUCTS (5 OF 5) ---\n";
+  // 6. Seed 5 Products
+  logOutput += "\n--- 5. PRODUCTS (5 OF 5) ---\n";
   const sampleProducts = [
     {
       title: "Gucci Leather Shoulder Bag",
@@ -253,8 +323,8 @@ async function seedAll() {
     logOutput += `[PRODUCT #${i + 1}] Title: ${prod.title} | Price: ${prod.price} ETB | Category: ${prod.category} | ID: ${pId}\n`;
   }
 
-  // 4. Seed 5 Orders
-  logOutput += "\n--- 3. ORDERS (5 OF 5) ---\n";
+  // 7. Seed 5 Orders
+  logOutput += "\n--- 6. ORDERS (5 OF 5) ---\n";
   const ts = Date.now();
   const sampleOrders = [
     {
@@ -398,12 +468,12 @@ async function seedAll() {
   }
 
   logOutput += "\n======================================================================\n";
-  logOutput += "          DATABASE SEED COMPLETE: ALL 5/5 RECORDS CREATED           \n";
+  logOutput += "          DATABASE SEED COMPLETE: ALL RECORDS CREATED           \n";
   logOutput += "======================================================================\n";
 
   const seedTxtPath = path.join(__dirname, "seed.txt");
   fs.writeFileSync(seedTxtPath, logOutput);
-  console.log(`\nAll 5 Users, 5 Products, and 5 Orders seeded successfully!`);
+  console.log(`\nCategories, Brands, Subcategories, Users, Products, and Orders seeded successfully!`);
   console.log(`Formatted seed summary saved to: ${seedTxtPath}`);
   process.exit(0);
 }

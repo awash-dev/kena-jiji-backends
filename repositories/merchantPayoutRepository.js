@@ -8,7 +8,7 @@ const ensureTablesExist = async () => {
   try {
     await db.query(`
       CREATE TABLE IF NOT EXISTS merchant_bank_accounts (
-        id UUID PRIMARY KEY,
+        id VARCHAR(255) PRIMARY KEY,
         merchant_id VARCHAR(255) NOT NULL,
         bank_name VARCHAR(255) NOT NULL,
         account_number VARCHAR(255) NOT NULL,
@@ -17,11 +17,11 @@ const ensureTablesExist = async () => {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
-    `);
 
-    await db.query(`
+      ALTER TABLE merchant_bank_accounts ADD COLUMN IF NOT EXISTS is_default BOOLEAN DEFAULT FALSE;
+
       CREATE TABLE IF NOT EXISTS merchant_withdrawals (
-        id UUID PRIMARY KEY,
+        id VARCHAR(255) PRIMARY KEY,
         merchant_id VARCHAR(255) NOT NULL,
         amount NUMERIC(12, 2) NOT NULL,
         bank_name VARCHAR(255) NOT NULL,
@@ -32,37 +32,49 @@ const ensureTablesExist = async () => {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+
+      ALTER TABLE merchant_withdrawals ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
     `);
     tablesEnsured = true;
   } catch (e) {
-    console.error("Error creating merchant payout tables:", e.message);
+    console.error("Error creating/altering merchant payout tables:", e.message);
   }
 };
 
 // Merchant Bank Account Methods
 const getBankAccounts = async (merchantId) => {
   await ensureTablesExist();
-  const result = await db.query(
-    "SELECT * FROM merchant_bank_accounts WHERE merchant_id = $1 ORDER BY created_at DESC",
-    [String(merchantId)]
-  );
-  return serializeRows(result.rows);
+  try {
+    const result = await db.query(
+      "SELECT * FROM merchant_bank_accounts WHERE merchant_id = $1 ORDER BY created_at DESC",
+      [String(merchantId)]
+    );
+    return serializeRows(result.rows);
+  } catch (e) {
+    console.error("getBankAccounts SQL Error:", e.message);
+    return [];
+  }
 };
 
 const addBankAccount = async (merchantId, { bank_name, account_number, account_holder_name }) => {
   await ensureTablesExist();
-  // Check if they have any accounts, if not make this one default
-  const countRes = await db.query("SELECT COUNT(*) FROM merchant_bank_accounts WHERE merchant_id = $1", [String(merchantId)]);
-  const isDefault = countRes.rows[0].count === '0';
-  const id = uuidv4();
-  
-  const result = await db.query(
-    `INSERT INTO merchant_bank_accounts (id, merchant_id, bank_name, account_number, account_holder_name, is_default)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING *`,
-    [id, String(merchantId), bank_name, account_number, account_holder_name, isDefault]
-  );
-  return serializeRow(result.rows[0]);
+  try {
+    const countRes = await db.query("SELECT COUNT(*) FROM merchant_bank_accounts WHERE merchant_id = $1", [String(merchantId)]);
+    const count = parseInt(countRes.rows[0]?.count || "0", 10);
+    const isDefault = count === 0;
+    const id = uuidv4();
+    
+    const result = await db.query(
+      `INSERT INTO merchant_bank_accounts (id, merchant_id, bank_name, account_number, account_holder_name, is_default)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [id, String(merchantId), String(bank_name), String(account_number), String(account_holder_name), isDefault]
+    );
+    return serializeRow(result.rows[0]);
+  } catch (e) {
+    console.error("addBankAccount SQL Error:", e.message);
+    throw e;
+  }
 };
 
 const setDefaultBankAccount = async (merchantId, accountId) => {

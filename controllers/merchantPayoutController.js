@@ -19,10 +19,17 @@ const getMerchantBankAccounts = async (req, res) => {
 };
 
 const addMerchantBankAccount = async (req, res) => {
-  const { bank_name, account_number, account_holder_name } = req.body;
+  const bank_name = req.body?.bank_name || req.body?.bankName;
+  const account_number = req.body?.account_number || req.body?.accountNumber;
+  const account_holder_name = req.body?.account_holder_name || req.body?.accountHolderName;
+
   if (!bank_name || !account_number || !account_holder_name) {
-    return res.status(400).json({ success: false, message: "All bank account fields are required" });
+    return res.status(400).json({
+      success: false,
+      message: "bank_name, account_number, and account_holder_name are required",
+    });
   }
+
   try {
     const userId = getUserId(req);
     const bankAccount = await merchantPayoutRepository.addBankAccount(userId, {

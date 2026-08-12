@@ -1,0 +1,26 @@
+{
+  "nodeModulesDir": "auto",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false
+  },
+  "lint": {
+    "files": {
+      "exclude": ["node_modules/", "upload/", "uploads/"]
+    },
+    "rules": {
+      "exclude": [
+        "no-unused-vars",
+        "no-explicit-any",
+        "require-yield",
+        "prefer-const",
+        "no-empty"
+      ]
+    }
+  },
+  "fmt": {
+    "files": {
+      "exclude": ["node_modules/", "upload/", "uploads/"]
+    }
+  }
+}

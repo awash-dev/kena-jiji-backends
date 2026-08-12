@@ -54,13 +54,13 @@ const requireRole = (...roles) =>
 
 module.exports = {
   authMiddleware,
-  isSuperAdmin: requireRole("superAdmin"),
-  isAdmin: requireRole("admin"),
-  isMerchant: requireRole("merchant"),
-  isDeliveryBoy: requireRole("deliveryBoy"),
-  isUser: requireRole("user"),
+  isSuperAdmin: requireRole("superAdmin", "admin"),
+  isAdmin: requireRole("superAdmin", "admin"),
+  isMerchant: requireRole("superAdmin", "merchant", "admin"),
+  isDeliveryBoy: requireRole("superAdmin", "deliveryBoy", "admin"),
+  isUser: requireRole("superAdmin", "merchant", "admin", "client", "user"),
   isSuperAdminOrAdmin: requireRole("superAdmin", "admin"),
-  isSuperAdminOrMerchant: requireRole("superAdmin", "merchant"),
+  isSuperAdminOrMerchant: requireRole("superAdmin", "merchant", "admin"),
   isAdminSuperAdminOrMerchant: requireRole("superAdmin", "merchant", "admin"),
   isSuperAdminOrMerchantOrAdmin: requireRole("superAdmin", "merchant", "admin"),
 };

@@ -1,5 +1,6 @@
 const db = require("../configure/wubFashionDB");
 const { serializeRow, serializeRows } = require("../services/sqlHelpers");
+const { v4: uuidv4 } = require("uuid");
 
 let tablesEnsured = false;
 const ensureTablesExist = async () => {
@@ -7,7 +8,7 @@ const ensureTablesExist = async () => {
   try {
     await db.query(`
       CREATE TABLE IF NOT EXISTS merchant_bank_accounts (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        id UUID PRIMARY KEY,
         merchant_id VARCHAR(255) NOT NULL,
         bank_name VARCHAR(255) NOT NULL,
         account_number VARCHAR(255) NOT NULL,
@@ -20,7 +21,7 @@ const ensureTablesExist = async () => {
 
     await db.query(`
       CREATE TABLE IF NOT EXISTS merchant_withdrawals (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        id UUID PRIMARY KEY,
         merchant_id VARCHAR(255) NOT NULL,
         amount NUMERIC(12, 2) NOT NULL,
         bank_name VARCHAR(255) NOT NULL,
@@ -53,12 +54,13 @@ const addBankAccount = async (merchantId, { bank_name, account_number, account_h
   // Check if they have any accounts, if not make this one default
   const countRes = await db.query("SELECT COUNT(*) FROM merchant_bank_accounts WHERE merchant_id = $1", [String(merchantId)]);
   const isDefault = countRes.rows[0].count === '0';
+  const id = uuidv4();
   
   const result = await db.query(
-    `INSERT INTO merchant_bank_accounts (merchant_id, bank_name, account_number, account_holder_name, is_default)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO merchant_bank_accounts (id, merchant_id, bank_name, account_number, account_holder_name, is_default)
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
-    [String(merchantId), bank_name, account_number, account_holder_name, isDefault]
+    [id, String(merchantId), bank_name, account_number, account_holder_name, isDefault]
   );
   return serializeRow(result.rows[0]);
 };
@@ -150,11 +152,12 @@ const getMerchantCashSales = async (merchantId) => {
 
 // Withdrawal Requests
 const createWithdrawalRequest = async (merchantId, { amount, bank_name, account_number, account_holder_name }) => {
+  const id = uuidv4();
   const result = await db.query(
-    `INSERT INTO merchant_withdrawals (merchant_id, amount, bank_name, account_number, account_holder_name, status)
-     VALUES ($1, $2, $3, $4, $5, 'pending')
+    `INSERT INTO merchant_withdrawals (id, merchant_id, amount, bank_name, account_number, account_holder_name, status)
+     VALUES ($1, $2, $3, $4, $5, $6, 'pending')
      RETURNING *`,
-    [merchantId, amount, bank_name, account_number, account_holder_name]
+    [id, String(merchantId), amount, bank_name, account_number, account_holder_name]
   );
   return serializeRow(result.rows[0]);
 };

@@ -101,7 +101,124 @@ const sampleCategories = ["Fashion", "Footwear", "Electronics", "Home & Living",
 const sampleBrands = ["Gucci", "Nike", "Zara", "Samsung", "Apple"];
 const sampleSubcategories = ["Bags", "Sneakers", "Dresses", "Mobiles", "Laptops"];
 
+async function ensureSchemaExist() {
+  console.log("Ensuring all database tables and schema exist...");
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id VARCHAR(255) PRIMARY KEY,
+        role VARCHAR(50) NOT NULL DEFAULT 'user',
+        firstname VARCHAR(100),
+        lastname VARCHAR(100),
+        username VARCHAR(100) UNIQUE,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        mobile VARCHAR(50),
+        password VARCHAR(255) NOT NULL,
+        is_email_verified BOOLEAN DEFAULT FALSE,
+        is_active BOOLEAN DEFAULT TRUE,
+        profile_picture JSONB,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS product_categories (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        title VARCHAR(255) UNIQUE NOT NULL,
+        postedbyuserid VARCHAR(255),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS brands (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        title VARCHAR(255) UNIQUE NOT NULL,
+        postedbyuserid VARCHAR(255),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS product_subcategories (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        title VARCHAR(255) UNIQUE NOT NULL,
+        postedbyuserid VARCHAR(255),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS stores (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        store_id VARCHAR(255) UNIQUE NOT NULL,
+        store_name VARCHAR(255) NOT NULL,
+        owner_id VARCHAR(255) NOT NULL,
+        address TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS products (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        title VARCHAR(255) NOT NULL,
+        slug VARCHAR(255) UNIQUE,
+        description TEXT,
+        price NUMERIC(12, 2) NOT NULL,
+        category VARCHAR(255),
+        subcategory VARCHAR(255),
+        brand VARCHAR(255),
+        quantity INT DEFAULT 10,
+        sold INT DEFAULT 0,
+        images JSONB,
+        colors JSONB,
+        tags JSONB,
+        postedbyuserid VARCHAR(255),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS orders (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tx_ref VARCHAR(255) UNIQUE NOT NULL,
+        user_id VARCHAR(255) NOT NULL,
+        cart JSONB,
+        total_price NUMERIC(12, 2) NOT NULL,
+        payment_method VARCHAR(50) DEFAULT 'cod',
+        order_status VARCHAR(50) DEFAULT 'placed',
+        admin_approval_status VARCHAR(50) DEFAULT 'pending',
+        bank_receipt_url TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS merchant_bank_accounts (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        merchant_id VARCHAR(255) NOT NULL,
+        bank_name VARCHAR(255) NOT NULL,
+        account_number VARCHAR(255) NOT NULL,
+        account_holder_name VARCHAR(255) NOT NULL,
+        is_default BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS merchant_withdrawals (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        merchant_id VARCHAR(255) NOT NULL,
+        amount NUMERIC(12, 2) NOT NULL,
+        bank_name VARCHAR(255) NOT NULL,
+        account_number VARCHAR(255) NOT NULL,
+        account_holder_name VARCHAR(255) NOT NULL,
+        status VARCHAR(50) DEFAULT 'pending',
+        rejection_reason TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("Database tables and schema ensured successfully!");
+  } catch (e) {
+    console.error("Error ensuring schema:", e.message);
+  }
+}
+
 async function seedAll() {
+  await ensureSchemaExist();
   console.log("Starting full database seed (Categories, Brands, Users, Products, Orders)...");
   let logOutput = "======================================================================\n";
   logOutput += "            ETHIO-MERKATO PLATFORM MASTER SEED DATA                   \n";

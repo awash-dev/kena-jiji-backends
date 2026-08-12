@@ -1,25 +1,64 @@
 const db = require("../configure/wubFashionDB");
 const { serializeRow, serializeRows } = require("../services/sqlHelpers");
 
+let tablesEnsured = false;
+const ensureTablesExist = async () => {
+  if (tablesEnsured) return;
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS merchant_bank_accounts (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        merchant_id VARCHAR(255) NOT NULL,
+        bank_name VARCHAR(255) NOT NULL,
+        account_number VARCHAR(255) NOT NULL,
+        account_holder_name VARCHAR(255) NOT NULL,
+        is_default BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS merchant_withdrawals (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        merchant_id VARCHAR(255) NOT NULL,
+        amount NUMERIC(12, 2) NOT NULL,
+        bank_name VARCHAR(255) NOT NULL,
+        account_number VARCHAR(255) NOT NULL,
+        account_holder_name VARCHAR(255) NOT NULL,
+        status VARCHAR(50) DEFAULT 'pending',
+        rejection_reason TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    tablesEnsured = true;
+  } catch (e) {
+    console.error("Error creating merchant payout tables:", e.message);
+  }
+};
+
 // Merchant Bank Account Methods
 const getBankAccounts = async (merchantId) => {
+  await ensureTablesExist();
   const result = await db.query(
     "SELECT * FROM merchant_bank_accounts WHERE merchant_id = $1 ORDER BY created_at DESC",
-    [merchantId]
+    [String(merchantId)]
   );
   return serializeRows(result.rows);
 };
 
 const addBankAccount = async (merchantId, { bank_name, account_number, account_holder_name }) => {
+  await ensureTablesExist();
   // Check if they have any accounts, if not make this one default
-  const countRes = await db.query("SELECT COUNT(*) FROM merchant_bank_accounts WHERE merchant_id = $1", [merchantId]);
+  const countRes = await db.query("SELECT COUNT(*) FROM merchant_bank_accounts WHERE merchant_id = $1", [String(merchantId)]);
   const isDefault = countRes.rows[0].count === '0';
   
   const result = await db.query(
     `INSERT INTO merchant_bank_accounts (merchant_id, bank_name, account_number, account_holder_name, is_default)
      VALUES ($1, $2, $3, $4, $5)
      RETURNING *`,
-    [merchantId, bank_name, account_number, account_holder_name, isDefault]
+    [String(merchantId), bank_name, account_number, account_holder_name, isDefault]
   );
   return serializeRow(result.rows[0]);
 };

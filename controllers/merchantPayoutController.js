@@ -2,11 +2,16 @@ const merchantPayoutRepository = require("../repositories/merchantPayoutReposito
 const orderRepository = require("../repositories/orderRepository");
 const notificationRepository = require("../repositories/notificationRepository");
 
+const getUserId = (req) => {
+  return req.user?._id || req.user?.id || req.user?.userId;
+};
+
 // --- Merchant Endpoints ---
 
 const getMerchantBankAccounts = async (req, res) => {
   try {
-    const bankAccounts = await merchantPayoutRepository.getBankAccounts(req.user._id);
+    const userId = getUserId(req);
+    const bankAccounts = await merchantPayoutRepository.getBankAccounts(userId);
     res.status(200).json({ success: true, bankAccounts });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -19,13 +24,15 @@ const addMerchantBankAccount = async (req, res) => {
     return res.status(400).json({ success: false, message: "All bank account fields are required" });
   }
   try {
-    const bankAccount = await merchantPayoutRepository.addBankAccount(req.user._id, {
+    const userId = getUserId(req);
+    const bankAccount = await merchantPayoutRepository.addBankAccount(userId, {
       bank_name,
       account_number,
       account_holder_name,
     });
     res.status(201).json({ success: true, bankAccount, message: "Bank account added successfully" });
   } catch (error) {
+    console.error("addMerchantBankAccount Error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -33,7 +40,8 @@ const addMerchantBankAccount = async (req, res) => {
 const setDefaultBankAccount = async (req, res) => {
   const { id } = req.params;
   try {
-    const bankAccount = await merchantPayoutRepository.setDefaultBankAccount(req.user._id, id);
+    const userId = getUserId(req);
+    const bankAccount = await merchantPayoutRepository.setDefaultBankAccount(userId, id);
     res.status(200).json({ success: true, bankAccount, message: "Default bank account updated" });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -43,7 +51,8 @@ const setDefaultBankAccount = async (req, res) => {
 const deleteMerchantBankAccount = async (req, res) => {
   const { id } = req.params;
   try {
-    await merchantPayoutRepository.deleteBankAccount(req.user._id, id);
+    const userId = getUserId(req);
+    await merchantPayoutRepository.deleteBankAccount(userId, id);
     res.status(200).json({ success: true, message: "Bank account deleted" });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -52,7 +61,8 @@ const deleteMerchantBankAccount = async (req, res) => {
 
 const getMerchantCashSales = async (req, res) => {
   try {
-    const ledger = await merchantPayoutRepository.getMerchantCashSales(req.user._id);
+    const userId = getUserId(req);
+    const ledger = await merchantPayoutRepository.getMerchantCashSales(userId);
     res.status(200).json({ success: true, ...ledger });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -66,7 +76,8 @@ const requestWithdrawal = async (req, res) => {
   }
 
   try {
-    const ledger = await merchantPayoutRepository.getMerchantCashSales(req.user._id);
+    const userId = getUserId(req);
+    const ledger = await merchantPayoutRepository.getMerchantCashSales(userId);
     if (amount > ledger.availableBalance) {
       return res.status(400).json({
         success: false,
@@ -74,7 +85,7 @@ const requestWithdrawal = async (req, res) => {
       });
     }
 
-    const withdrawal = await merchantPayoutRepository.createWithdrawalRequest(req.user._id, {
+    const withdrawal = await merchantPayoutRepository.createWithdrawalRequest(userId, {
       amount,
       bank_name,
       account_number,

@@ -14,6 +14,8 @@ const createBlog = asyncHandler(async (req, res) => {
     postedbyuserid: req.user._id,
     images: req.body.images,
     author: req.body.author,
+    ad_type: req.body.adType || req.body.ad_type || "home_slider",
+    is_active: req.body.isActive !== undefined ? req.body.isActive : true,
   });
 
   createActivity({
@@ -37,6 +39,8 @@ const updateBlog = asyncHandler(async (req, res) => {
     postedbyuserid: req.user._id,
     images: req.body.images,
     author: req.body.author,
+    ad_type: req.body.adType || req.body.ad_type,
+    is_active: req.body.isActive,
   });
 
   createActivity({

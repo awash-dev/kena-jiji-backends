@@ -4,8 +4,8 @@ const { serializeRow, serializeRows } = require("../services/sqlHelpers");
 const create = async (payload) => {
   const result = await db.query(
     `
-      INSERT INTO blogs (title, description, category, subcategory, likes, dislikes, author, postedbyuserid, images)
-      VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8, $9::jsonb)
+      INSERT INTO blogs (title, description, category, subcategory, likes, dislikes, author, postedbyuserid, images, ad_type, is_active)
+      VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8, $9::jsonb, $10, $11)
       RETURNING *
     `,
     [
@@ -18,6 +18,8 @@ const create = async (payload) => {
       payload.author || "Admin",
       payload.postedbyuserid,
       JSON.stringify(payload.images || []),
+      payload.ad_type || "home_slider",
+      payload.is_active === undefined ? true : payload.is_active,
     ]
   );
   return serializeRow(result.rows[0]);

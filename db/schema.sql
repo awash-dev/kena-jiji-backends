@@ -247,9 +247,15 @@ CREATE TABLE IF NOT EXISTS blogs (
   author TEXT NOT NULL DEFAULT 'Admin',
   postedbyuserid UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   images JSONB NOT NULL DEFAULT '[]'::jsonb,
+  ad_type TEXT NOT NULL DEFAULT 'home_slider',
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Migration for existing deployments: ensure ad columns exist
+ALTER TABLE blogs ADD COLUMN IF NOT EXISTS ad_type TEXT NOT NULL DEFAULT 'home_slider';
+ALTER TABLE blogs ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
 
 CREATE TABLE IF NOT EXISTS reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

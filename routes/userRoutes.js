@@ -45,12 +45,21 @@ const {
 
 } = require("../controllers/userController");
 const { authMiddleware, isAdmin, isSuperAdmin, isSuperAdminOrAdmin, isAdminSuperAdminOrMerchant, isSuperAdminOrMerchant, isSuperAdminOrMerchantOrAdmin } = require("../middlewares/authMiddleware");
+const {
+  getMerchantApplications,
+  approveMerchantApplication,
+  rejectMerchantApplication,
+} = require("../controllers/documentController");
 //const { checkout, paymentVerification } = require("../controller/paymentCtrl");
 const router = express.Router();
 
 router.get("/getallorders", authMiddleware, isSuperAdminOrAdmin, getAllOrders);
 router.get("/all-users", authMiddleware, isSuperAdminOrAdmin, getallUser);
 router.get("/getmyorders", authMiddleware, getMyOrders);
+
+router.get("/merchant-applications", authMiddleware, isSuperAdminOrAdmin, getMerchantApplications);
+router.put("/approve-merchant/:id", authMiddleware, isSuperAdminOrAdmin, approveMerchantApplication);
+router.put("/reject-merchant/:id", authMiddleware, isSuperAdminOrAdmin, rejectMerchantApplication);
 
 router.get("/getMonthWiseOrderIncome", authMiddleware, isSuperAdminOrAdmin, getMonthWiseOrderIncome);
 router.get("/getyearlyorders", authMiddleware, isSuperAdminOrAdmin, getYearlyTotalOrder);

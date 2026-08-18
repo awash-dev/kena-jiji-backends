@@ -1,0 +1,31 @@
+======================================================================
+         ETHIO-MERKATO ADS / PROMOS / COUPONS SEED                    
+======================================================================
+
+--- 1. AD TYPES / BLOG CATEGORIES (3) ---
+[AD TYPE #1] Home Ads | EXISTS | ID: 665443f5-c4e2-4f84-ad96-49bf1e67c84c
+[AD TYPE #2] Popup | EXISTS | ID: fa146cb0-13ea-4241-890f-29a2e852573f
+[AD TYPE #3] Sliding | EXISTS | ID: c24e20fd-5c62-4297-92d0-166813d0771a
+
+--- 2. AD SUBTYPES / BLOG SUBCATEGORIES (3) ---
+[AD SUBTYPE #1] Hero Banner | EXISTS | ID: 6325c502-80bd-4f35-82cf-93a5d3ea4014
+[AD SUBTYPE #2] Carousel | EXISTS | ID: 22b2c22b-f0ce-483a-ba22-8356852b490a
+[AD SUBTYPE #3] Announcement | EXISTS | ID: 344ee921-5c3b-47ec-9a7e-31c84ecf1047
+
+--- 3. SAMPLE ADS (3) ---
+[AD #1] Grand Opening Mega Sale — Homepage Banner | Type: Home Ads | ID: 747145b0-6c00-4653-a56f-3d451274a942
+[AD #2] Flash Deal Popup — Sign Up For 10% Off | Type: Popup | ID: be696209-c6a1-4f76-a080-bc95912b1fc9
+[AD #3] New Season Arrivals — Sliding Carousel | Type: Sliding | ID: 83e0e7a1-dd9b-4168-89f8-d9fa88ddbeac
+
+--- 4. PROMOTIONS (2) ---
+[PROMO #1] Code: TEN10 | 10 Days Discount | Discount: 10% | Expires: 2026-08-24 | ID: 150c3233-2600-4f59-9981-b0331a1873df
+[PROMO #2] Code: MEGA20 | Mega 20% Flash Sale | Discount: 20% | Expires: 2026-08-21 | ID: 8e14e0e3-adc1-4feb-9668-f3c339b3ed40
+
+--- 5. COUPONS (3) ---
+[COUPON #1] Code: KENA10 | Discount: 10% | Expires: 2026-09-13 | ID: dec703b2-283d-4c5d-9b92-02a0fbc366e9
+[COUPON #2] Code: WELCOME15 | Discount: 15% | Expires: 2026-09-28 | ID: ee3a76bc-8e9c-472d-9e87-eed65d13fa13
+[COUPON #3] Code: MERKATO5 | Discount: 5% | Expires: 2026-10-13 | ID: 62bf07cc-2501-4f7a-83a6-2f3ed366e460
+
+======================================================================
+        ADS / PROMOS / COUPONS SEED COMPLETE                        
+======================================================================

@@ -225,8 +225,15 @@ const resetPassword = asyncHandler(async (req, res) => {
 
 const loginUserCtrl = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
+  if (!email || !password) {
+    res.status(400);
+    throw new Error("Email and password are required");
+  }
   const findUser = await userRepository.findOneByEmail(email);
-  if (!findUser) throw new Error("Invalid Credentials");
+  if (!findUser) {
+    res.status(401);
+    throw new Error("Invalid Credentials");
+  }
   if (!findUser.isEmailVerified) {
     res.status(401);
     throw new Error("Please verify your email before logging in.");
@@ -235,7 +242,10 @@ const loginUserCtrl = asyncHandler(async (req, res) => {
     res.status(403);
     throw new Error("Your account has been blocked. Please contact support.");
   }
-  if (!(await comparePassword(password, findUser.password))) throw new Error("Invalid Credentials");
+  if (!(await comparePassword(password, findUser.password))) {
+    res.status(401);
+    throw new Error("Invalid Credentials");
+  }
 
   const refreshToken = await generateRefreshToken(findUser._id);
   await userRepository.updateById(findUser._id, { refresh_token: refreshToken });

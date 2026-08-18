@@ -1,5 +1,6 @@
 const cloudinary = require("../utils/cloudinary");
 const documentRepository = require("../repositories/documentRepository");
+const userRepository = require("../repositories/userRepository");
 const { createActivity } = require("../services/activityService");
 
 const createDocument = async (req, res) => {
@@ -55,6 +56,48 @@ const updateDocumentStatus = async (req, res) => {
   }
 };
 
+const getMerchantApplications = async (req, res) => {
+  try {
+    const applications = await documentRepository.findMerchantApplications();
+    res.status(200).json({ success: true, data: applications });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const approveMerchantApplication = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const user = await userRepository.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    await userRepository.updateById(userId, { role: "merchant", is_active: true });
+    await documentRepository.updateStatusByUserId(userId, "approved");
+
+    await createActivity({
+      action: "Approve Merchant",
+      resource: "Merchant Application",
+      resourceId: userId,
+      user: userId,
+      details: { status: "approved" },
+    });
+
+    res.status(200).json({ success: true, message: "Merchant application approved." });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const rejectMerchantApplication = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    await documentRepository.updateStatusByUserId(userId, "rejected");
+    res.status(200).json({ success: true, message: "Merchant application rejected." });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 const uploadImage = async (req, res) => {
   try {
     const uploadedImages = [];
@@ -78,4 +121,13 @@ const deleteImage = async (req, res) => {
   }
 };
 
-module.exports = { createDocument, uploadImage, deleteImage, getDocuments, updateDocumentStatus };
+module.exports = {
+  createDocument,
+  uploadImage,
+  deleteImage,
+  getDocuments,
+  updateDocumentStatus,
+  getMerchantApplications,
+  approveMerchantApplication,
+  rejectMerchantApplication,
+};

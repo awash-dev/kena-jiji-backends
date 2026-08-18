@@ -46,9 +46,10 @@ dotenv.config();
 
 const PORT = process.env.PORT || 4000;
 
-// CORS Configuration
+// CORS Configuration - allow ALL origins (reflect the requesting origin)
 app.use(cors({
     origin: function (origin, callback) {
+        // Allow any origin (no restriction). For non-browser calls origin is undefined.
         callback(null, true);
     },
     methods: 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
@@ -62,6 +63,22 @@ app.options('*', cors({
     },
     credentials: true
 }));
+
+// Disable CDN / browser caching for API responses.
+// Without this, Vercel's edge cache serves stale responses with CORS headers
+// from a previous origin, causing "Access-Control-Allow-Origin ... not equal to
+// the supplied origin" errors and spurious 304 responses.
+app.use((req, res, next) => {
+    if (req.path.startsWith('/api/')) {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+        res.setHeader('Vary', 'Origin, Accept-Encoding');
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+    next();
+});
 
 // Connect to PostgreSQL
 connectDB();
@@ -184,16 +201,32 @@ app.use((req, res, next) => {
     });
 });
 
-// Global Error Handler Middleware (500)
+// Global Error Handler Middleware
 app.use((err, req, res, next) => {
-    console.error('Unhandled Server Error:', err.stack || err);
-    const statusCode = res.statusCode && res.statusCode !== 200 ? res.statusCode : 500;
-    res.status(statusCode).json({
-        success: false,
-        status: 'error',
-        message: err.message || 'Internal Server Error',
-        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-    });
+  console.error('Unhandled Server Error:', err.stack || err);
+  let statusCode = res.statusCode && res.statusCode !== 200 ? res.statusCode : 500;
+  const message = err.message || 'Internal Server Error';
+
+  // Normalize thrown auth/validation errors so clients get a 4xx instead of 500.
+  if (statusCode === 500) {
+    const msg = message.toLowerCase();
+    if (
+      /invalid credentials|email and password are required|verify your email|no refresh token|invalid or expired otp|password reset|wrong password|account has been blocked/.test(msg)
+    ) {
+      statusCode = 401;
+    } else if (/not found|no users found/.test(msg)) {
+      statusCode = 404;
+    } else if (/missing|required|already|already exists|duplicate/.test(msg)) {
+      statusCode = 400;
+    }
+  }
+
+  res.status(statusCode).json({
+    success: false,
+    status: statusCode >= 500 ? 'error' : 'fail',
+    message,
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
 });
 
 // Export app for Vercel Serverless deployment

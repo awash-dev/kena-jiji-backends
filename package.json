@@ -5,7 +5,8 @@
   "license": "MIT",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "seed:ads-promos-coupons": "node seed_ads_promos_coupons.js"
   },
   "dependencies": {
     "axios": "^1.7.2",

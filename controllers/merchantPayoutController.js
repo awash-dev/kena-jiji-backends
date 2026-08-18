@@ -76,6 +76,15 @@ const getMerchantCashSales = async (req, res) => {
   }
 };
 
+const getAllMerchantRevenue = async (req, res) => {
+  try {
+    const merchants = await merchantPayoutRepository.getAllMerchantRevenue();
+    res.status(200).json({ success: true, merchants });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 const requestWithdrawal = async (req, res) => {
   const { amount, bank_name, account_number, account_holder_name } = req.body;
   if (!amount || amount <= 0) {
@@ -222,6 +231,7 @@ module.exports = {
   setDefaultBankAccount,
   deleteMerchantBankAccount,
   getMerchantCashSales,
+  getAllMerchantRevenue,
   requestWithdrawal,
   getPendingOrdersForAdmin,
   confirmOrderAdmin,

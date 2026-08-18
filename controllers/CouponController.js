@@ -8,7 +8,7 @@ const createCoupon = asyncHandler(async (req, res) => {
       name: req.body.name,
       expiry: req.body.expiry,
       discount: req.body.discount,
-      postedbyuserid: req.body.PostedByuserId,
+      postedbyuserid: req.user?._id ?? req.body.postedbyuserid ?? req.body.PostedByuserId,
     })
   );
 });
@@ -22,7 +22,7 @@ const updateCoupon = asyncHandler(async (req, res) => {
       name: req.body.name,
       expiry: req.body.expiry,
       discount: req.body.discount,
-      postedbyuserid: req.body.PostedByuserId,
+      postedbyuserid: req.user?._id ?? req.body.postedbyuserid ?? req.body.PostedByuserId,
     })
   );
 });

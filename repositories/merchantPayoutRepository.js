@@ -162,6 +162,53 @@ const getMerchantCashSales = async (merchantId) => {
   };
 };
 
+// Revenue breakdown per merchant, derived from order carts.
+const getAllMerchantRevenue = async () => {
+  const ordersResult = await db.query(
+    `SELECT id, cart, created_at FROM orders ORDER BY created_at DESC`
+  );
+  const orders = serializeRows(ordersResult.rows);
+
+  const revenueMap = new Map();
+  for (const order of orders) {
+    const cartItems = Array.isArray(order.cart) ? order.cart : [];
+    for (const item of cartItems) {
+      const merchantId =
+        item.product?.postedbyuserid || item.postedbyuserid || item.merchantId || item.store?.owner_id;
+      if (!merchantId) continue;
+      const key = String(merchantId);
+      if (!revenueMap.has(key)) {
+        revenueMap.set(key, { merchantId: key, revenue: 0, orderIds: new Set(), items: 0 });
+      }
+      const entry = revenueMap.get(key);
+      entry.revenue += Number(item.price || item.product?.price || 0) * Number(item.quantity || 1);
+      entry.orderIds.add(String(order.id));
+      entry.items += 1;
+    }
+  }
+
+  const merchantIds = Array.from(revenueMap.keys());
+  let merchants = [];
+  if (merchantIds.length > 0) {
+    const storeRes = await db.query(
+      `SELECT owner_id, store_name FROM stores WHERE owner_id = ANY($1::uuid[])`,
+      [merchantIds]
+    );
+    const nameByOwner = new Map(storeRes.rows.map((r) => [String(r.owner_id), r.store_name]));
+    merchants = Array.from(revenueMap.values())
+      .map((m) => ({
+        merchantId: m.merchantId,
+        storeName: nameByOwner.get(m.merchantId) || "Unknown store",
+        revenue: Number(m.revenue.toFixed(2)),
+        orders: m.orderIds.size,
+        items: m.items,
+      }))
+      .sort((a, b) => b.revenue - a.revenue);
+  }
+
+  return merchants;
+};
+
 // Withdrawal Requests
 const createWithdrawalRequest = async (merchantId, { amount, bank_name, account_number, account_holder_name }) => {
   const id = uuidv4();
@@ -206,6 +253,7 @@ module.exports = {
   setDefaultBankAccount,
   deleteBankAccount,
   getMerchantCashSales,
+  getAllMerchantRevenue,
   createWithdrawalRequest,
   getWithdrawalById,
   getAllWithdrawals,

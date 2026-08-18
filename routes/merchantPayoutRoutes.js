@@ -6,6 +6,7 @@ const {
   setDefaultBankAccount,
   deleteMerchantBankAccount,
   getMerchantCashSales,
+  getAllMerchantRevenue,
   requestWithdrawal,
   getPendingOrdersForAdmin,
   confirmOrderAdmin,
@@ -33,5 +34,8 @@ router.put("/admin/orders/:orderId/reject", authMiddleware, isSuperAdminOrAdmin,
 router.get("/admin/withdrawals", authMiddleware, isSuperAdminOrAdmin, getAllWithdrawalRequests);
 router.put("/admin/withdrawals/:id/approve", authMiddleware, isSuperAdminOrAdmin, approveWithdrawalAdmin);
 router.put("/admin/withdrawals/:id/reject", authMiddleware, isSuperAdminOrAdmin, rejectWithdrawalAdmin);
+
+// Super Admin Merchant Revenue
+router.get("/admin/merchant-revenue", authMiddleware, isSuperAdminOrAdmin, getAllMerchantRevenue);
 
 module.exports = router;

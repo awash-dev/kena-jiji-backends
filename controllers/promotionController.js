@@ -60,7 +60,7 @@ const getPromotionById = asyncHandler(async (req, res) => {
   res.json(promotion);
 });
 
-const getAllPromotions = asyncHandler(async (req, res) => res.json(await promotionRepository.findAll({ active: true })));
+const getAllPromotions = asyncHandler(async (req, res) => res.json(await promotionRepository.findAll()));
 
 const deactivatePromotion = asyncHandler(async (req, res) => {
   validateMongoDbId(req.params.id);

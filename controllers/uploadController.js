@@ -1,4 +1,3 @@
-const fs = require("fs");
 const { upload, deleteImage } = require("../utils/cloudinary");
 const vm = require("v-response");
 
@@ -12,19 +11,12 @@ exports.create = async (req, res, next) => {
     try {
         // Handle multiple uploads
         const uploadPromises = files.map(file => {
-            const { path } = file;
-        
-
-            return upload(path)
-                .then(uploadResult => {
-                    fs.unlinkSync(path);
-                    return {
-                        public_id: uploadResult.public_id,
-                        secure_url: uploadResult.secure_url
-                    };
-                })
+            return upload(file.buffer)
+                .then(uploadResult => ({
+                    public_id: uploadResult.public_id,
+                    secure_url: uploadResult.secure_url
+                }))
                 .catch(err => {
-                    fs.unlinkSync(path);
                     throw err;
                 });
         });

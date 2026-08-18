@@ -8,7 +8,7 @@ cloudinary.config({
 
 function upload(file) {
     return new Promise((resolve, reject) => {
-        cloudinary.uploader.upload(file, { resource_type: 'auto' }, (err, res) => {
+        const finish = (err, res) => {
             if (err) {
                 console.log('cloudinary err:', err);
                 reject(err);
@@ -18,7 +18,13 @@ function upload(file) {
                     secure_url: res.secure_url
                 });
             }
-        });
+        };
+        if (Buffer.isBuffer(file)) {
+            const stream = cloudinary.uploader.upload_stream({ resource_type: 'auto' }, finish);
+            stream.end(file);
+        } else {
+            cloudinary.uploader.upload(file, { resource_type: 'auto' }, finish);
+        }
     });
 }
 

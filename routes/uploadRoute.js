@@ -3,14 +3,7 @@ const multer = require("multer");
 const user_controller = require("../controllers/uploadController");
 const router = express.Router();
 
-let storage = multer.diskStorage({
-    destination: function (req, file, callback) {
-        callback(null, "./uploads/");
-    },
-    filename: function (req, file, callback) {
-        callback(null, file.originalname);
-    }
-});
+let storage = multer.memoryStorage();
 
 let maxSize = 10 * 1024 * 1024; // 10 MB
 let upload = multer({

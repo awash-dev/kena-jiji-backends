@@ -3,6 +3,7 @@ const slugify = require("slugify");
 const validateMongoDbId = require("../utils/validateMongoDbId");
 const productRepository = require("../repositories/productRepository");
 const userRepository = require("../repositories/userRepository");
+const storeRepository = require("../repositories/storeRepository");
 const { createActivity } = require("../services/activityService");
 
 const parseMaybeJson = (value) => {
@@ -87,8 +88,25 @@ const normalizeProductPayload = (body) => {
   };
 };
 
+const ensureAdminStore = async (ownerId) => {
+  const stores = await storeRepository.findByOwnerId(ownerId);
+  if (stores.length > 0) return stores[0]._id;
+  const user = await userRepository.findById(ownerId);
+  const name = [user?.firstname, user?.lastname].filter(Boolean).join(" ").trim() || "Admin";
+  const store = await storeRepository.create({
+    store_name: `${name}'s Store`,
+    owner_id: ownerId,
+    address: "Admin",
+  });
+  return store._id;
+};
+
 const createProduct = asyncHandler(async (req, res) => {
-  const newProduct = await productRepository.create(normalizeProductPayload(req.body));
+  const payload = normalizeProductPayload(req.body);
+  if (!payload.store && payload.postedbyuserid) {
+    payload.store = await ensureAdminStore(payload.postedbyuserid);
+  }
+  const newProduct = await productRepository.create(payload);
   await createActivity({
     action: "create Product",
     resource: "Product",

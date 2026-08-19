@@ -289,7 +289,11 @@ const updatedUser = asyncHandler(async (req, res) => {
   const profile = req.body.profileInfo || req.body;
   // Only a Super Admin may change roles through the update endpoint.
   const isSuperAdmin = req.user?.role === "superAdmin";
-  const user = await userRepository.updateById(userId, {
+
+  // Build the update payload from only the fields actually provided so
+  // partial updates never send undefined to Postgres (which would 500).
+  const patch = {};
+  for (const [key, value] of Object.entries({
     firstname: profile.firstname,
     lastname: profile.lastname,
     username: profile.username,
@@ -300,7 +304,11 @@ const updatedUser = asyncHandler(async (req, res) => {
     ...(isSuperAdmin && profile.role ? { role: profile.role } : {}),
     is_active: profile.isActive,
     is_blocked: profile.isBlocked,
-  });
+  })) {
+    if (value !== undefined) patch[key] = value;
+  }
+
+  const user = await userRepository.updateById(userId, patch);
   if (!user) return res.status(404).json({ message: "User not found" });
   res.status(200).json({ message: "Profile updated successfully", user });
 });
@@ -367,6 +375,12 @@ const unblockUser = asyncHandler(async (req, res) => {
 });
 
 const getDeliveryBoys = async (req, res) => res.status(200).json(await userRepository.findByRole("deliveryBoy"));
+
+const getProfile = asyncHandler(async (req, res) => {
+  const user = await userRepository.findById(req.user._id);
+  if (!user) return res.status(404).json({ message: "User not found" });
+  res.json(user);
+});
 
 const assignOrderToDeliveryBoy = async (req, res) => {
   const order = await orderRepository.findById(req.params.orderId);
@@ -602,6 +616,7 @@ module.exports = {
   removeProductFromCart,
   updateProductQuantityFromCart,
   getDeliveryBoys,
+  getProfile,
   assignOrderToDeliveryBoy,
   updateDeliveryBoy,
   deleteDeliveryBoy,

@@ -42,6 +42,7 @@ const {
   getUsersByRole,
   getUserCount,
   changeUserRole,
+  getProfile,
 
 } = require("../controllers/userController");
 const { authMiddleware, isAdmin, isSuperAdmin, isSuperAdminOrAdmin, isAdminSuperAdminOrMerchant, isSuperAdminOrMerchant, isSuperAdminOrMerchantOrAdmin } = require("../middlewares/authMiddleware");
@@ -49,13 +50,27 @@ const {
   getMerchantApplications,
   approveMerchantApplication,
   rejectMerchantApplication,
+  applyMerchant,
 } = require("../controllers/documentController");
 //const { checkout, paymentVerification } = require("../controller/paymentCtrl");
 const router = express.Router();
 
+// NOTE: All specific (static) routes MUST be declared BEFORE the generic
+// /:id routes below, otherwise Express matches e.g. "save-address" as an :id
+// and requests hit getaUser/updatedUser with an invalid id -> 500.
+
 router.get("/getallorders", authMiddleware, isSuperAdminOrAdmin, getAllOrders);
 router.get("/all-users", authMiddleware, isSuperAdminOrAdmin, getallUser);
 router.get("/getmyorders", authMiddleware, getMyOrders);
+router.get("/getDeliveryBoys", authMiddleware, getDeliveryBoys);
+
+// Self-service profile + orders endpoints (used by the mobile app)
+router.get("/profile", authMiddleware, getProfile);
+router.put("/profile", authMiddleware, updatedUser);
+router.get("/orders", authMiddleware, getMyOrders);
+router.get("/orders/:orderId", authMiddleware, getsingleOrder);
+
+router.post("/apply-merchant", authMiddleware, applyMerchant);
 
 router.get("/merchant-applications", authMiddleware, isSuperAdminOrAdmin, getMerchantApplications);
 router.put("/approve-merchant/:id", authMiddleware, isSuperAdminOrAdmin, approveMerchantApplication);
@@ -67,8 +82,6 @@ router.get("/getyearlyorders", authMiddleware, isSuperAdminOrAdmin, getYearlyTot
 router.put('/changepassword/:token', changePassword);
 router.get("/userList", authMiddleware, isSuperAdminOrAdmin, getUsersByRole);
 router.get("/userCounts", authMiddleware, isSuperAdminOrAdmin, getUserCount);
-router.get("/:id", getaUser);
-router.put("/:id", updatedUser);
 
 // Super Admin only: change a user's role
 router.put("/role/:id", authMiddleware, isSuperAdmin, changeUserRole);
@@ -115,12 +128,15 @@ router.delete("/remove-wishlist/:id", authMiddleware, removeFromWishlist); // pr
 
 router.delete("/empty-cart", authMiddleware, emptyCart);
 
-router.delete("/:id", deleteaUser);
-
 router.put("/edit-user", authMiddleware, updatedUser);
 router.put("/save-address", authMiddleware, saveAddress);
 router.put("/block-user/:id", authMiddleware, isSuperAdminOrAdmin, blockUser);
 router.put("/unblock-user/:id", authMiddleware, isSuperAdminOrAdmin, unblockUser);
+
+// Generic CRUD routes - keep LAST so static routes above are matched first.
+router.get("/:id", getaUser);
+router.put("/:id", updatedUser);
+router.delete("/:id", deleteaUser);
 
 
 

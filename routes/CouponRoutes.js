@@ -10,7 +10,7 @@ const { authMiddleware, isSuperAdminOrAdmin } = require("../middlewares/authMidd
 const router = express.Router();
 
 router.post("/", authMiddleware, isSuperAdminOrAdmin, createCoupon);
-router.get("/", authMiddleware, isSuperAdminOrAdmin, getAllCoupons);
+router.get("/", getAllCoupons);
 router.get("/:id", authMiddleware, isSuperAdminOrAdmin, getCoupon);
 router.put("/:id", authMiddleware, isSuperAdminOrAdmin, updateCoupon);
 router.delete("/:id", authMiddleware, isSuperAdminOrAdmin, deleteCoupon);

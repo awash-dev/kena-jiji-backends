@@ -3,14 +3,15 @@ const chatRepository = require("../repositories/chatRepository");
 const userRepository = require("../repositories/userRepository");
 
 const sendMessage = asyncHandler(async (req, res) => {
-  const { content, chatId } = req.body;
-  if (!content || !chatId) return res.status(500).json({ error: "Message or chatId missing." });
+  const { content, chatId, images } = req.body;
+  if ((!content && !images) || !chatId) return res.status(500).json({ error: "Message or chatId missing." });
 
   try {
     const message = await chatRepository.createMessage({
       sender: req.user._id,
-      message: content,
+      message: content || "",
       chat: chatId,
+      images: Array.isArray(images) ? images : [],
     });
     await chatRepository.updateChat(chatId, { latest_message: message._id });
     const sender = await userRepository.findById(req.user._id);

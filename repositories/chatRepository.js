@@ -32,14 +32,14 @@ const findDirectChat = async (userA, userB) => {
   return serializeRow(result.rows[0]);
 };
 
-const createChat = async ({ chat_name, is_group_chat, users, group_admin }) => {
+const createChat = async ({ chat_name, is_group_chat, users, group_admin, order_id }) => {
   const result = await db.query(
     `
-      INSERT INTO chats (chat_name, is_group_chat, users, group_admin)
-      VALUES ($1, $2, $3::jsonb, $4)
+      INSERT INTO chats (chat_name, is_group_chat, users, group_admin, order_id)
+      VALUES ($1, $2, $3::jsonb, $4, $5)
       RETURNING *
     `,
-    [chat_name, is_group_chat, JSON.stringify(users), group_admin || null]
+    [chat_name, is_group_chat, JSON.stringify(users), group_admin || null, order_id || null]
   );
   return serializeRow(result.rows[0]);
 };
@@ -71,10 +71,10 @@ const findChatById = async (chatId) => {
   return serializeRow(result.rows[0]);
 };
 
-const createMessage = async ({ sender, chat, message }) => {
+const createMessage = async ({ sender, chat, message, images }) => {
   const result = await db.query(
-    `INSERT INTO messages (sender, chat, message) VALUES ($1, $2, $3) RETURNING *`,
-    [sender, chat, message]
+    `INSERT INTO messages (sender, chat, message, images) VALUES ($1, $2, $3, $4::jsonb) RETURNING *`,
+    [sender, chat, message, JSON.stringify(Array.isArray(images) ? images : [])]
   );
   return serializeRow(result.rows[0]);
 };

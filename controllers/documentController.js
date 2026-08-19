@@ -98,6 +98,61 @@ const rejectMerchantApplication = async (req, res) => {
   }
 };
 
+// Submit a merchant application from the mobile app.
+// Creates a pending row in `documents` (the same source consumed by
+// getMerchantApplications) and records the store name/city on the user for display.
+const applyMerchant = async (req, res) => {
+  try {
+    const {
+      userId,
+      storeName,
+      phone,
+      tinNumber,
+      description,
+      category,
+      city,
+      documentUrl,
+      status,
+    } = req.body;
+
+    const uid = userId || req.user?._id;
+    if (!uid) return res.status(400).json({ success: false, message: "userId is required" });
+
+    const user = await userRepository.findById(uid);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    const newDocument = await documentRepository.create({
+      tin_number: tinNumber || "",
+      images: documentUrl ? [{ secure_url: documentUrl }] : [],
+      id_card_images: [],
+      status: status || "pending",
+      postedbyuserid: uid,
+    });
+
+    // Keep the store name & city visible in the admin applications list.
+    await userRepository.updateById(uid, {
+      username: storeName || user.username,
+      address: city || user.address,
+    });
+
+    await createActivity({
+      action: "Apply Merchant",
+      resource: "Merchant Application",
+      resourceId: newDocument._id,
+      user: uid,
+      details: { storeName, phone, category, city, description },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Application submitted successfully",
+      data: newDocument,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 const uploadImage = async (req, res) => {
   try {
     const uploadedImages = [];
@@ -130,4 +185,5 @@ module.exports = {
   getMerchantApplications,
   approveMerchantApplication,
   rejectMerchantApplication,
+  applyMerchant,
 };

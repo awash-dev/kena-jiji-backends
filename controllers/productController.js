@@ -103,6 +103,12 @@ const ensureAdminStore = async (ownerId) => {
 
 const createProduct = asyncHandler(async (req, res) => {
   const payload = normalizeProductPayload(req.body);
+  // If a store was supplied but no longer exists (deleted store, bad id),
+  // fall back to the owner's store so the FK insert never 500s.
+  if (payload.store) {
+    const store = await storeRepository.findById(payload.store);
+    if (!store) payload.store = undefined;
+  }
   if (!payload.store && payload.postedbyuserid) {
     payload.store = await ensureAdminStore(payload.postedbyuserid);
   }
@@ -137,7 +143,15 @@ const assertMerchantOwnership = async (req, productId) => {
 const updateProduct = asyncHandler(async (req, res) => {
   validateMongoDbId(req.params.id);
   await assertMerchantOwnership(req, req.params.id);
-  const updatedProduct = await productRepository.updateById(req.params.id, normalizeProductPayload(req.body));
+  const payload = normalizeProductPayload(req.body);
+  if (payload.store) {
+    const store = await storeRepository.findById(payload.store);
+    if (!store) payload.store = undefined;
+  }
+  if (!payload.store && payload.postedbyuserid) {
+    payload.store = await ensureAdminStore(payload.postedbyuserid);
+  }
+  const updatedProduct = await productRepository.updateById(req.params.id, payload);
   await createActivity({
     action: "Update Product",
     resource: "Product",
@@ -218,6 +232,14 @@ const RejectedProducts = asyncHandler(async (req, res) => {
     products,
     pagination: { currentPage: page, totalPages: Math.ceil(totalCount / limit), totalCount },
   });
+});
+
+const getProductsByCategory = asyncHandler(async (req, res) => {
+  const products = await productRepository.findAll({
+    filters: { category: req.params.category, product_approved: "approved" },
+    orderBy: "p.created_at DESC",
+  });
+  res.json(products);
 });
 
 const addToWishlist = asyncHandler(async (req, res) => {
@@ -358,4 +380,5 @@ module.exports = {
   AllEachMerchantProducts,
   NotApprovedProducts,
   RejectedProducts,
+  getProductsByCategory,
 };

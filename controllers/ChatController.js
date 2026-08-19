@@ -25,6 +25,7 @@ const accessChat = async (req, res) => {
       chat_name: "sender",
       is_group_chat: false,
       users: [req.user._id, req.body.userId],
+      order_id: req.body.orderId || req.body.order_id || null,
     });
 
     res.status(201).json(await hydrateChat(newChat));
@@ -36,7 +37,7 @@ const accessChat = async (req, res) => {
 const getChats = async (req, res) => {
   try {
     const chats = await chatRepository.findChatsByUser(req.user._id);
-    if (!chats.length) return res.status(422).json({ message: "No chats found." });
+    if (!chats.length) return res.status(200).json([]);
     res.status(200).json(await Promise.all(chats.map(hydrateChat)));
   } catch (error) {
     res.status(500).json({ error: error.message });

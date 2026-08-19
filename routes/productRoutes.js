@@ -17,6 +17,7 @@ const {
     NotApprovedProducts,
     RejectedProducts,
     AllMerchantProducts,
+    getProductsByCategory,
 
 } = require("../controllers/productController");
 const { isAdmin, isSuperAdminOrAdmin, isSuperAdminOrMerchant, isSuperAdminOrMerchantOrAdmin, authMiddleware } = require("../middlewares/authMiddleware");
@@ -33,6 +34,7 @@ router.get('/AllProduct/:id', EachMerchantProducts);
 router.get("/store/:id", getStoreProducts);
 router.get('/NotApproved', authMiddleware, isSuperAdminOrAdmin, NotApprovedProducts);
 router.get('/Rejected', authMiddleware, isSuperAdminOrAdmin, RejectedProducts);
+router.get('/category/:category', getProductsByCategory);
 
 
 

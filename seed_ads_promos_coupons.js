@@ -12,18 +12,31 @@ const {
 const { hashPassword } = require("./services/passwordService");
 
 // Ad (blog) categories shown in the Super Admin "Ads" dropdown.
-const AD_TYPES = ["Home Ads", "Popup", "Sliding"];
+const AD_TYPES = [
+  "Home Slider",
+  "Popup",
+  "Flash Deals",
+  "Combo Deals",
+  "Weekend Deals",
+  "10 Day Discount",
+  "Best Picks",
+  "New Arrivals",
+  "Trending",
+  "Black Friday",
+  "Welcome Deal",
+  "Donsa Fashion",
+];
 
 // Ad subcategories for finer placement.
-const AD_SUBTYPES = ["Hero Banner", "Carousel", "Announcement"];
+const AD_SUBTYPES = [];
 
 const sampleAds = [
   {
     title: "Grand Opening Mega Sale — Homepage Banner",
     description:
       "Up to 50% off across the whole marketplace. Shop the home banner offer before it ends.",
-    category: "Home Ads",
-    subcategory: "Hero Banner",
+    category: "Home Slider",
+    subcategory: "",
     author: "Kena Studio",
     images: [
       {
@@ -37,7 +50,7 @@ const sampleAds = [
     description:
       "Grab a one-time 10% welcome discount by signing up today. Limited to the first 1,000 customers.",
     category: "Popup",
-    subcategory: "Announcement",
+    subcategory: "",
     author: "Kena Studio",
     images: [
       {
@@ -47,15 +60,15 @@ const sampleAds = [
     ],
   },
   {
-    title: "New Season Arrivals — Sliding Carousel",
+    title: "Weekend Flash Deals — Up to 40% Off",
     description:
-      "Discover the freshest fashion, electronics and home goods in our rotating featured slider.",
-    category: "Sliding",
-    subcategory: "Carousel",
+      "Limited time flash deals this weekend. Shop electronics, fashion and home goods at unbeatable prices.",
+    category: "Flash Deals",
+    subcategory: "",
     author: "Kena Studio",
     images: [
       {
-        public_id: "ad_sliding_1",
+        public_id: "ad_flash_1",
         url: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=80",
       },
     ],

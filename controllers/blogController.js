@@ -8,14 +8,17 @@ const { createActivity } = require("../services/activityService");
 const createBlog = asyncHandler(async (req, res) => {
   const newBlog = await blogRepository.create({
     title: req.body.title,
-    description: req.body.description,
-    category: req.body.category,
-    subcategory: req.body.subcategory,
+    description: req.body.description || "",
+    category: req.body.category || "",
+    subcategory: req.body.subcategory || "",
     postedbyuserid: req.user._id,
-    images: req.body.images,
-    author: req.body.author,
-    ad_type: req.body.adType || req.body.ad_type || "home_slider",
+    images: req.body.images || [],
+    author: req.body.author || "Admin",
+    ad_type: req.body.adType || req.body.ad_type || "",
     is_active: req.body.isActive !== undefined ? req.body.isActive : true,
+    products: req.body.products || [],
+    merchant_id: req.body.merchantId || req.body.merchant_id || null,
+    store_id: req.body.storeId || req.body.store_id || null,
   });
 
   createActivity({
@@ -33,14 +36,17 @@ const updateBlog = asyncHandler(async (req, res) => {
   validateMongoDbId(req.params.id);
   const updateBlog = await blogRepository.updateById(req.params.id, {
     title: req.body.title,
-    description: req.body.description,
-    category: req.body.category,
-    subcategory: req.body.subcategory,
+    description: req.body.description ?? "",
+    category: req.body.category ?? "",
+    subcategory: req.body.subcategory ?? "",
     postedbyuserid: req.user._id,
-    images: req.body.images,
-    author: req.body.author,
-    ad_type: req.body.adType || req.body.ad_type,
+    images: req.body.images || [],
+    author: req.body.author || "Admin",
+    ad_type: req.body.adType || req.body.ad_type || "",
     is_active: req.body.isActive,
+    products: req.body.products || [],
+    merchant_id: req.body.merchantId || req.body.merchant_id || null,
+    store_id: req.body.storeId || req.body.store_id || null,
   });
 
   createActivity({

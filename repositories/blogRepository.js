@@ -4,15 +4,15 @@ const { serializeRow, serializeRows } = require("../services/sqlHelpers");
 const create = async (payload) => {
   const result = await db.query(
     `
-      INSERT INTO blogs (title, description, category, subcategory, likes, dislikes, author, postedbyuserid, images, ad_type, is_active)
-      VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8, $9::jsonb, $10, $11)
+      INSERT INTO blogs (title, description, category, subcategory, likes, dislikes, author, postedbyuserid, images, ad_type, is_active, products, merchant_id, store_id)
+      VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8, $9::jsonb, $10, $11, $12::jsonb, $13, $14)
       RETURNING *
     `,
     [
       payload.title,
       payload.description,
       payload.category,
-      payload.subcategory,
+      payload.subcategory || "",
       JSON.stringify(payload.likes || []),
       JSON.stringify(payload.dislikes || []),
       payload.author || "Admin",
@@ -20,6 +20,9 @@ const create = async (payload) => {
       JSON.stringify(payload.images || []),
       payload.ad_type || "home_slider",
       payload.is_active === undefined ? true : payload.is_active,
+      JSON.stringify(payload.products || []),
+      payload.merchant_id || payload.merchantId || null,
+      payload.store_id || payload.storeId || null,
     ]
   );
   return serializeRow(result.rows[0]);

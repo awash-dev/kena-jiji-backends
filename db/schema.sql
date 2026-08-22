@@ -249,6 +249,9 @@ CREATE TABLE IF NOT EXISTS blogs (
   images JSONB NOT NULL DEFAULT '[]'::jsonb,
   ad_type TEXT NOT NULL DEFAULT 'home_slider',
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  products JSONB NOT NULL DEFAULT '[]'::jsonb,
+  merchant_id UUID,
+  store_id UUID,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -256,6 +259,9 @@ CREATE TABLE IF NOT EXISTS blogs (
 -- Migration for existing deployments: ensure ad columns exist
 ALTER TABLE blogs ADD COLUMN IF NOT EXISTS ad_type TEXT NOT NULL DEFAULT 'home_slider';
 ALTER TABLE blogs ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE blogs ADD COLUMN IF NOT EXISTS products JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE blogs ADD COLUMN IF NOT EXISTS merchant_id UUID;
+ALTER TABLE blogs ADD COLUMN IF NOT EXISTS store_id UUID;
 
 CREATE TABLE IF NOT EXISTS reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

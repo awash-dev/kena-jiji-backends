@@ -560,6 +560,20 @@ const getUsersByRole = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, users });
 });
 
+const getSupportUser = asyncHandler(async (req, res) => {
+  const admins = await userRepository.findByRole("admin");
+  if (admins.length) {
+    const a = admins[0];
+    return res.status(200).json({ _id: a._id || a.id, name: a.firstname, role: a.role });
+  }
+  const supers = await userRepository.findByRole("superAdmin");
+  if (supers.length) {
+    const s = supers[0];
+    return res.status(200).json({ _id: s._id || s.id, name: s.firstname, role: s.role });
+  }
+  res.status(404).json({ message: "No support admin available" });
+});
+
 const getUserCount = async (req, res) => {
   try {
     const counts = (await userRepository.countByRole()).reduce((acc, item) => {
@@ -624,4 +638,5 @@ module.exports = {
   getUsersByRole,
   getUserCount,
   changeUserRole,
+  getSupportUser,
 };

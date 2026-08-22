@@ -43,6 +43,7 @@ const {
   getUserCount,
   changeUserRole,
   getProfile,
+  getSupportUser,
 
 } = require("../controllers/userController");
 const { authMiddleware, isAdmin, isSuperAdmin, isSuperAdminOrAdmin, isAdminSuperAdminOrMerchant, isSuperAdminOrMerchant, isSuperAdminOrMerchantOrAdmin } = require("../middlewares/authMiddleware");
@@ -82,6 +83,7 @@ router.get("/getyearlyorders", authMiddleware, isSuperAdminOrAdmin, getYearlyTot
 router.put('/changepassword/:token', changePassword);
 router.get("/userList", authMiddleware, isSuperAdminOrAdmin, getUsersByRole);
 router.get("/userCounts", authMiddleware, isSuperAdminOrAdmin, getUserCount);
+router.get("/support-user", authMiddleware, getSupportUser);
 
 // Super Admin only: change a user's role
 router.put("/role/:id", authMiddleware, isSuperAdmin, changeUserRole);

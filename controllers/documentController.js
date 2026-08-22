@@ -143,6 +143,23 @@ const applyMerchant = async (req, res) => {
       details: { storeName, phone, category, city, description },
     });
 
+    const io = req.app.get("io");
+    if (io) {
+      io.to("admins").emit("merchant applied", {
+        userId: uid,
+        storeName,
+        phone,
+        category,
+        city,
+        documentId: newDocument._id,
+      });
+      io.to("admins").emit("notification", {
+        title: "New Merchant Application",
+        message: `${storeName || user.firstname || "A user"} applied for merchant approval.`,
+        type: "merchant_application",
+      });
+    }
+
     res.status(201).json({
       success: true,
       message: "Application submitted successfully",

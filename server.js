@@ -244,11 +244,14 @@ if (!process.env.VERCEL) {
                 'http://localhost:3000',
                 'http://localhost:3001',
                 'http://localhost:51650',
+                'http://localhost:50350',
                 "https://www.stock.kefaycard.com/",
                 "https://stock.kefaycard.com/"
             ]
         }
     });
+
+    app.set("io", io);
 
     io.on("connection", (socket) => {
         socket.on("setup", (userData) => {

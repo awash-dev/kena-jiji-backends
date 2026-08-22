@@ -3,7 +3,7 @@ const chatRepository = require("../repositories/chatRepository");
 const userRepository = require("../repositories/userRepository");
 
 const sendMessage = asyncHandler(async (req, res) => {
-  const { content, chatId, images } = req.body;
+  const { content, chatId, images, product } = req.body;
   if ((!content && !images) || !chatId) return res.status(500).json({ error: "Message or chatId missing." });
 
   try {
@@ -15,11 +15,24 @@ const sendMessage = asyncHandler(async (req, res) => {
     });
     await chatRepository.updateChat(chatId, { latest_message: message._id });
     const sender = await userRepository.findById(req.user._id);
-    res.json({
+    const chat = await chatRepository.findChatById(chatId);
+
+    const fullMessage = {
       ...message,
-      sender: sender ? { _id: sender._id, name: sender.firstname, pic: sender.ProfilePicture } : null,
-      chat: await chatRepository.findChatById(chatId),
-    });
+      sender: sender ? { _id: sender._id, name: sender.firstname, pic: sender.ProfilePicture, email: sender.email } : null,
+      chat,
+    };
+
+    const io = req.app.get("io");
+    if (io && chat && chat.users) {
+      chat.users.forEach((userId) => {
+        if (userId !== req.user._id) {
+          io.to(userId).emit("message received", fullMessage);
+        }
+      });
+    }
+
+    res.json(fullMessage);
   } catch (error) {
     return res.status(500).json({ error: "Message could not be sent." });
   }

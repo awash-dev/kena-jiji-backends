@@ -4,14 +4,43 @@ const userRepository = require("../repositories/userRepository");
 
 const hydrateChat = async (chat) => {
   if (!chat) return null;
-  const users = await Promise.all((chat.users || []).map((id) => userRepository.findById(id)));
-  const latestMessage = chat.latestMessage ? (await chatRepository.findMessagesByChat(chat._id)).find((message) => message._id === chat.latestMessage) : null;
-  const groupAdmin = chat.groupAdmin ? await userRepository.findById(chat.groupAdmin) : null;
+  const users = await Promise.all(
+    (chat.users || []).map((id) =>
+      typeof id === "object" && id !== null ? id : userRepository.findById(id)
+    )
+  );
+  const latestMessage = chat.latestMessage
+    ? (await chatRepository.findMessagesByChat(chat._id)).find(
+        (message) => message._id === chat.latestMessage
+      )
+    : null;
+  const groupAdmin = chat.groupAdmin
+    ? await userRepository.findById(chat.groupAdmin)
+    : null;
   return {
     ...chat,
-    users: users.filter(Boolean).map((user) => ({ _id: user._id, email: user.email, name: user.firstname, pic: user.ProfilePicture })),
+    users: users.filter(Boolean).map((user) => ({
+      _id: user._id || user.id,
+      id: user._id || user.id,
+      email: user.email,
+      name:
+        `${user.firstname || ""} ${user.lastname || ""}`.trim() ||
+        user.firstname ||
+        user.email ||
+        "User",
+      firstname: user.firstname,
+      lastname: user.lastname,
+      pic: user.ProfilePicture,
+      role: user.role || "user",
+    })),
     latestMessage,
-    groupAdmin: groupAdmin ? { _id: groupAdmin._id, email: groupAdmin.email, name: groupAdmin.firstname } : null,
+    groupAdmin: groupAdmin
+      ? {
+          _id: groupAdmin._id || groupAdmin.id,
+          email: groupAdmin.email,
+          name: groupAdmin.firstname,
+        }
+      : null,
   };
 };
 
@@ -19,7 +48,14 @@ const accessChat = async (req, res) => {
   if (!req.body.userId) return res.status(400).json({ error: "userId not present in the request body." });
   try {
     const existingChat = await chatRepository.findDirectChat(req.user._id, req.body.userId);
-    if (existingChat) return res.status(200).json(await hydrateChat(existingChat));
+    if (existingChat) {
+      if ((req.body.orderId || req.body.order_id) && !existingChat.order_id) {
+        await chatRepository.updateChat(existingChat._id, {
+          order_id: req.body.orderId || req.body.order_id,
+        });
+      }
+      return res.status(200).json(await hydrateChat(existingChat));
+    }
 
     const newChat = await chatRepository.createChat({
       chat_name: "sender",
@@ -36,7 +72,10 @@ const accessChat = async (req, res) => {
 
 const getChats = async (req, res) => {
   try {
-    const chats = await chatRepository.findChatsByUser(req.user._id);
+    const isStaff = req.user.role === "admin" || req.user.role === "superAdmin";
+    const chats = isStaff
+      ? await chatRepository.findAllChats()
+      : await chatRepository.findChatsByUser(req.user._id);
     if (!chats.length) return res.status(200).json([]);
     res.status(200).json(await Promise.all(chats.map(hydrateChat)));
   } catch (error) {

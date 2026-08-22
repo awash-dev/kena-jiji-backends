@@ -56,11 +56,14 @@ const updateChat = async (chatId, payload) => {
   const fields = [];
   const values = [];
   Object.entries(payload).forEach(([key, value]) => {
-    values.push(Array.isArray(value) ? JSON.stringify(value) : value);
-    fields.push(`${key} = $${values.length}`);
+    if (key !== "updated_at" && key !== "updatedAt" && value !== undefined) {
+      values.push(Array.isArray(value) || (value && typeof value === "object") ? JSON.stringify(value) : value);
+      fields.push(`${key} = $${values.length}`);
+    }
   });
+  const setClause = fields.length > 0 ? `${fields.join(", ")}, updated_at = NOW()` : `updated_at = NOW()`;
   const result = await db.query(
-    `UPDATE chats SET ${fields.join(", ")}, updated_at = NOW() WHERE id = $${values.length + 1} RETURNING *`,
+    `UPDATE chats SET ${setClause} WHERE id = $${values.length + 1} RETURNING *`,
     [...values, chatId]
   );
   return serializeRow(result.rows[0]);
@@ -84,12 +87,20 @@ const findMessagesByChat = async (chatId) => {
   return serializeRows(result.rows);
 };
 
+const findAllChats = async () => {
+  const result = await db.query(
+    `SELECT * FROM chats ORDER BY updated_at DESC`
+  );
+  return serializeRows(result.rows);
+};
+
 module.exports = {
   createConversation,
   findConversationsByUser,
   findDirectChat,
   createChat,
   findChatsByUser,
+  findAllChats,
   updateChat,
   findChatById,
   createMessage,

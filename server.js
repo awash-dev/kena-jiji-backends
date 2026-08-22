@@ -41,6 +41,8 @@ const MessageRouter = require("./routes/messageRoutes");
 const ConversationRoute = require("./routes/conversationRoutes");
 const PackageRoute = require("./routes/packageRouter");
 const ChatRoutes = require("./routes/chatroutes");
+const PaymentSettingsRouter = require("./routes/paymentSettingsRoutes");
+const MerchantPayoutRouter = require("./routes/merchantPayoutRoutes");
 
 dotenv.config();
 
@@ -49,7 +51,6 @@ const PORT = process.env.PORT || 4000;
 // CORS Configuration - allow ALL origins (reflect the requesting origin)
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow any origin (no restriction). For non-browser calls origin is undefined.
         callback(null, true);
     },
     methods: 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
@@ -65,9 +66,6 @@ app.options('*', cors({
 }));
 
 // Disable CDN / browser caching for API responses.
-// Without this, Vercel's edge cache serves stale responses with CORS headers
-// from a previous origin, causing "Access-Control-Allow-Origin ... not equal to
-// the supplied origin" errors and spurious 304 responses.
 app.use((req, res, next) => {
     if (req.path.startsWith('/api/')) {
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -101,9 +99,6 @@ app.get("/", (req, res) => {
         version: "1.0.0"
     });
 });
-
-const PaymentSettingsRouter = require("./routes/paymentSettingsRoutes");
-const MerchantPayoutRouter = require("./routes/merchantPayoutRoutes");
 
 // API Routes
 app.use("/api/user", UserRouter);
@@ -207,7 +202,6 @@ app.use((err, req, res, next) => {
   let statusCode = res.statusCode && res.statusCode !== 200 ? res.statusCode : 500;
   const message = err.message || 'Internal Server Error';
 
-  // Normalize thrown auth/validation errors so clients get a 4xx instead of 500.
   if (statusCode === 500) {
     const msg = message.toLowerCase();
     if (
@@ -240,14 +234,9 @@ if (!process.env.VERCEL) {
 
     const io = require("socket.io")(server, {
         cors: {
-            origin: [
-                'http://localhost:3000',
-                'http://localhost:3001',
-                'http://localhost:51650',
-                'http://localhost:50350',
-                "https://www.stock.kefaycard.com/",
-                "https://stock.kefaycard.com/"
-            ]
+            origin: "*",
+            methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+            credentials: true
         }
     });
 
@@ -255,23 +244,36 @@ if (!process.env.VERCEL) {
 
     io.on("connection", (socket) => {
         socket.on("setup", (userData) => {
-            socket.join(userData._id);
+            if (userData && (userData._id || userData.id)) {
+                const uid = String(userData._id || userData.id);
+                socket.join(uid);
+                if (userData.role === "admin" || userData.role === "superAdmin") {
+                    socket.join("admins");
+                }
+            }
             socket.emit("connected");
         });
 
         socket.on("join chat", (room) => {
-            socket.join(room);
+            if (room) socket.join(String(room));
         });
 
         socket.on("new message", (newMessageRec) => {
-            var chat = newMessageRec.chat;
-            if (!chat.users) return console.log("chat user not defined");
-
-            chat.users.forEach(user => {
-                if (user != newMessageRec.sender._id) {
-                    socket.in(user).emit("message received", newMessageRec);
-                }
-            });
+            const chat = newMessageRec?.chat;
+            if (!chat) return;
+            const chatId = String(chat._id || chat.id || "");
+            if (chatId) {
+                socket.to(chatId).emit("message received", newMessageRec);
+            }
+            if (Array.isArray(chat.users)) {
+                chat.users.forEach((user) => {
+                    const uid = typeof user === "object" ? (user._id || user.id) : user;
+                    if (uid && String(uid) !== String(newMessageRec.sender?._id || newMessageRec.sender?.id)) {
+                        socket.to(String(uid)).emit("message received", newMessageRec);
+                    }
+                });
+            }
+            socket.to("admins").emit("message received", newMessageRec);
         });
     });
 }

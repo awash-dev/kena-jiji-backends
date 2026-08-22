@@ -561,15 +561,27 @@ const getUsersByRole = asyncHandler(async (req, res) => {
 });
 
 const getSupportUser = asyncHandler(async (req, res) => {
-  const admins = await userRepository.findByRole("admin");
-  if (admins.length) {
-    const a = admins[0];
-    return res.status(200).json({ _id: a._id || a.id, name: a.firstname, role: a.role });
-  }
   const supers = await userRepository.findByRole("superAdmin");
   if (supers.length) {
     const s = supers[0];
-    return res.status(200).json({ _id: s._id || s.id, name: s.firstname, role: s.role });
+    return res.status(200).json({
+      _id: s._id || s.id,
+      id: s._id || s.id,
+      name: `${s.firstname || ""} ${s.lastname || ""}`.trim() || s.firstname || "Super Admin",
+      role: s.role || "superAdmin",
+      email: s.email,
+    });
+  }
+  const admins = await userRepository.findByRole("admin");
+  if (admins.length) {
+    const a = admins[0];
+    return res.status(200).json({
+      _id: a._id || a.id,
+      id: a._id || a.id,
+      name: `${a.firstname || ""} ${a.lastname || ""}`.trim() || a.firstname || "Admin Support",
+      role: a.role || "admin",
+      email: a.email,
+    });
   }
   res.status(404).json({ message: "No support admin available" });
 });

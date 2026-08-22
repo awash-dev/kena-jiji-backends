@@ -50,7 +50,12 @@ const create = async (payload) => {
   return serializeRow(result.rows[0]);
 };
 
+const isValidUuid = (id) =>
+  typeof id === "string" &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
 const findById = async (id) => {
+  if (!id || !isValidUuid(id)) return null;
   const result = await db.query(`SELECT * FROM users WHERE id = $1`, [id]);
   return serializeRow(result.rows[0]);
 };

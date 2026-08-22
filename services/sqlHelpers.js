@@ -11,6 +11,7 @@ const serializeRow = (row) => {
   for (const [key, value] of Object.entries(row)) {
     const camelKey = toCamel(key);
     serialized[camelKey] = value;
+    serialized[key] = value;
   }
 
   if (row.id && !serialized._id) {

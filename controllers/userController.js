@@ -526,7 +526,12 @@ const createOrder = asyncHandler(async (req, res) => {
 
 const getMyOrders = asyncHandler(async (req, res) => res.json({ orders: await orderRepository.findByUser(req.user._id) }));
 const getAllOrders = asyncHandler(async (req, res) => res.json({ orders: await orderRepository.findAll() }));
-const getsingleOrder = asyncHandler(async (req, res) => res.json({ orders: await orderRepository.findById(req.params.id) }));
+const getsingleOrder = asyncHandler(async (req, res) => {
+  const id = req.params.orderId || req.params.id;
+  const order = await orderRepository.findById(id);
+  if (!order) return res.status(404).json({ status: "error", message: "Order not found" });
+  res.json({ order, orders: order });
+});
 
 const updateOrder = async (req, res) => {
   try {

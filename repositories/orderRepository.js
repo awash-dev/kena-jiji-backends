@@ -51,6 +51,7 @@ const mapOrder = (row) => {
   if (row.user_firstname) {
     order.user = {
       _id: row.user_id,
+      id: row.user_id,
       firstname: row.user_firstname,
       lastname: row.user_lastname,
       email: row.user_email,
@@ -64,6 +65,7 @@ const mapOrder = (row) => {
   if (row.assigned_firstname) {
     order.assignedTo = {
       _id: row.assigned_to,
+      id: row.assigned_to,
       firstname: row.assigned_firstname,
       lastname: row.assigned_lastname,
       email: row.assigned_email,
@@ -75,7 +77,79 @@ const mapOrder = (row) => {
 
   delete order.userId;
 
+  // Ensure cart is an Array
+  if (typeof order.cart === "string") {
+    try {
+      order.cart = JSON.parse(order.cart);
+    } catch (_) {
+      order.cart = [];
+    }
+  }
+  if (!Array.isArray(order.cart)) {
+    order.cart = [];
+  }
+
   return order;
+};
+
+const hydrateOrders = async (orders) => {
+  if (!orders || !orders.length) return orders;
+
+  const productIds = new Set();
+  for (const order of orders) {
+    if (Array.isArray(order.cart)) {
+      for (const item of order.cart) {
+        if (!item) continue;
+        const pId = typeof item.product === "object" && item.product
+          ? (item.product._id || item.product.id)
+          : (item.product || item.productId || item.product_id);
+        if (pId) productIds.add(String(pId));
+      }
+    }
+  }
+
+  if (productIds.size > 0) {
+    try {
+      const prodList = Array.from(productIds);
+      const res = await db.query(
+        `SELECT id, title, price, old_price, images, brand, category, slug, description FROM products WHERE id::text = ANY($1)`,
+        [prodList]
+      );
+      const prodMap = {};
+      for (const row of res.rows) {
+        const p = serializeRow(row);
+        prodMap[String(p.id)] = p;
+        if (p._id) prodMap[String(p._id)] = p;
+      }
+
+      for (const order of orders) {
+        if (Array.isArray(order.cart)) {
+          for (const item of order.cart) {
+            if (!item) continue;
+            const pId = typeof item.product === "object" && item.product
+              ? String(item.product._id || item.product.id || "")
+              : String(item.product || item.productId || item.product_id || "");
+            
+            const fullProd = prodMap[pId];
+            if (fullProd) {
+              item.product = fullProd;
+              item.title = item.title || fullProd.title;
+              item.name = item.name || fullProd.title;
+              item.price = item.price || fullProd.price;
+              item.image = item.image || (Array.isArray(fullProd.images) && fullProd.images[0] ? (fullProd.images[0].url || fullProd.images[0].secure_url || fullProd.images[0]) : '');
+              item.images = fullProd.images || [];
+            } else if (typeof item.product !== "object" || !item.product) {
+              item.product = { _id: pId, id: pId, title: item.title || item.name || 'Product', price: item.price || 0 };
+            }
+          }
+        }
+      }
+    } catch (_) {
+      // Ignore hydration errors and return orders as is
+    }
+  }
+
+  return orders;
 };
 
 const baseSelect = `
@@ -103,24 +177,32 @@ const create = async (payload) => {
     values
   );
 
-  return serializeRow(result.rows[0]);
+  const mapped = mapOrder(result.rows[0]);
+  const hydrated = await hydrateOrders([mapped]);
+  return hydrated[0];
 };
 
 const findAll = async () => {
   const result = await db.query(`${baseSelect} ORDER BY o.created_at DESC`);
-  return result.rows.map(mapOrder);
+  const orders = result.rows.map(mapOrder);
+  return hydrateOrders(orders);
 };
 
 const findByUser = async (userId) => {
   const result = await db.query(`${baseSelect} WHERE o.user_id = $1 ORDER BY o.created_at DESC`, [
     userId,
   ]);
-  return result.rows.map(mapOrder);
+  const orders = result.rows.map(mapOrder);
+  return hydrateOrders(orders);
 };
 
 const findById = async (id) => {
-  const result = await db.query(`${baseSelect} WHERE o.id = $1`, [id]);
-  return mapOrder(result.rows[0]);
+  if (!id) return null;
+  const result = await db.query(`${baseSelect} WHERE o.id::text = $1 OR o.tx_ref = $1 LIMIT 1`, [String(id)]);
+  if (!result.rows.length) return null;
+  const mapped = mapOrder(result.rows[0]);
+  const hydrated = await hydrateOrders([mapped]);
+  return hydrated[0];
 };
 
 const updateById = async (id, payload) => {

@@ -6,7 +6,8 @@ const { createActivity } = require("../services/activityService");
 const createBrand = asyncHandler(async (req, res) => {
   const newBrand = await brandRepository.create({
     title: req.body.title,
-    postedbyuserid: req.body.PostedByuserId,
+    // Poster identity comes from the verified token, never the client body.
+    postedbyuserid: req.user?.id || req.body.PostedByuserId,
   });
   await createActivity({
     action: "create Brand",

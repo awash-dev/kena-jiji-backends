@@ -11,6 +11,7 @@ const fs = require('fs');
 const morgan = require("morgan"); // Optional: For logging
 
 const UserRouter = require('./routes/userRoutes');
+const { authMiddleware } = require('./middlewares/authMiddleware');
 const ProductRouter = require('./routes/productRoutes');
 const BrandRouter = require("./routes/brandRoutes");
 const BlogRouter = require("./routes/blogRoutes");
@@ -48,20 +49,30 @@ dotenv.config();
 
 const PORT = process.env.PORT || 4000;
 
-// CORS Configuration - allow ALL origins (reflect the requesting origin)
+// CORS Configuration - allow-list via CORS_ORIGINS env var.
+// Requests without an Origin header (mobile apps, curl) are always allowed;
+// browser origins must be listed in CORS_ORIGINS (comma-separated).
+const allowedOrigins = String(process.env.CORS_ORIGINS || "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+const corsOriginCheck = function (origin, callback) {
+    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+    }
+    return callback(null, false);
+};
+
 app.use(cors({
-    origin: function (origin, callback) {
-        callback(null, true);
-    },
+    origin: corsOriginCheck,
     methods: 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
     credentials: true,
 }));
 
 // Handle preflight requests
 app.options('*', cors({
-    origin: function (origin, callback) {
-        callback(null, true);
-    },
+    origin: corsOriginCheck,
     credentials: true
 }));
 
@@ -71,9 +82,7 @@ app.use((req, res, next) => {
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
-        res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
         res.setHeader('Vary', 'Origin, Accept-Encoding');
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
     }
     next();
 });
@@ -127,7 +136,9 @@ app.use("/api/size", SizeRoute);
 app.use("/api/store", StoreRoute);
 app.use("/api/promotion", PromotionRoute);
 app.use("/api/report", ReportIssue);
-app.use("/api/user", RegisterRoutes);
+// Mounted at its own path so the admin-only POST /api/register is not
+// shadowed by the public POST /api/user/register above.
+app.use("/api", RegisterRoutes);
 app.use("/api/activity", ActivityRoute);
 app.use("/api/document", DocumentRoute);
 app.use("/api/converstion", ConversationRoute);
@@ -164,8 +175,8 @@ const upload = multer({ storage: storage });
 // Serve uploaded images
 app.use('/images', express.static(uploadDir));
 
-// Upload endpoint
-app.post("/upload", upload.single('product'), (req, res) => {
+// Upload endpoint (authenticated)
+app.post("/upload", authMiddleware, upload.single('product'), (req, res) => {
     if (!req.file) {
         return res.status(400).json({ success: 0, message: "No file uploaded" });
     }
@@ -232,9 +243,13 @@ if (!process.env.VERCEL) {
         console.log(`Server is running on port ${PORT}`);
     });
 
+    const jwt = require("jsonwebtoken");
+    const userRepository = require("./repositories/userRepository");
+    const chatRepository = require("./repositories/chatRepository");
+
     const io = require("socket.io")(server, {
         cors: {
-            origin: "*",
+            origin: corsOriginCheck,
             methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
             credentials: true
         }
@@ -242,20 +257,53 @@ if (!process.env.VERCEL) {
 
     app.set("io", io);
 
+    // Socket authentication: a valid JWT is required to connect.
+    io.use((socket, next) => {
+        try {
+            const token = socket.handshake.auth?.token
+                || String(socket.handshake.headers?.authorization || "").replace(/^Bearer\s+/i, "");
+            if (!token) return next(new Error("Authentication required"));
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const uid = decoded?.userId ?? decoded?.id;
+            if (!uid) return next(new Error("Authentication failed"));
+            socket.data.userId = String(uid);
+            return next();
+        } catch (err) {
+            return next(new Error("Authentication failed"));
+        }
+    });
+
     io.on("connection", (socket) => {
-        socket.on("setup", (userData) => {
-            if (userData && (userData._id || userData.id)) {
-                const uid = String(userData._id || userData.id);
-                socket.join(uid);
-                if (userData.role === "admin" || userData.role === "superAdmin") {
-                    socket.join("admins");
-                }
+        // Resolve the verified user's role from the DB (client-sent identity is ignored).
+        const roleReady = userRepository.findById(socket.data.userId)
+            .then((user) => { socket.data.role = user ? user.role : null; })
+            .catch(() => { socket.data.role = null; });
+
+        socket.on("setup", async () => {
+            await roleReady;
+            socket.join(socket.data.userId);
+            if (socket.data.role === "admin" || socket.data.role === "superAdmin") {
+                socket.join("admins");
             }
             socket.emit("connected");
         });
 
-        socket.on("join chat", (room) => {
-            if (room) socket.join(String(room));
+        socket.on("join chat", async (room) => {
+            try {
+                if (!room) return;
+                const chat = await chatRepository.findChatById(String(room));
+                if (!chat) return;
+                const members = Array.isArray(chat.users) ? chat.users : [];
+                const isMember = members.some((u) => {
+                    const uid = typeof u === "object" ? (u._id || u.id) : u;
+                    return String(uid) === socket.data.userId;
+                });
+                if (isMember || socket.data.role === "admin" || socket.data.role === "superAdmin") {
+                    socket.join(String(room));
+                }
+            } catch (err) {
+                console.error("Socket join chat error:", err.message);
+            }
         });
 
         socket.on("new message", (newMessageRec) => {

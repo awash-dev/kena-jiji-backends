@@ -38,7 +38,7 @@ const authMiddleware = asyncHandler(async (req, res, next) => {
 const requireRole = (...roles) =>
   asyncHandler(async (req, res, next) => {
     if (!req.user) {
-      return next();
+      return res.status(401).json({ message: "Not authorized. Please login." });
     }
     // Allow superAdmin and admin to perform any platform action, or pass if role included
     if (
@@ -49,7 +49,9 @@ const requireRole = (...roles) =>
     ) {
       return next();
     }
-    return next();
+    return res
+      .status(403)
+      .json({ message: "You do not have permission to perform this action." });
   });
 
 module.exports = {

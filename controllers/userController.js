@@ -16,6 +16,10 @@ const { ROLES, PRIVILEGED_ROLES, ASSIGNABLE_ROLES } = require("../configure/role
 
 const generateOTPPassword = () => Math.floor(100000 + Math.random() * 900000).toString();
 
+// Refresh tokens are stored hashed (sha256) - the raw token only ever lives
+// in the client's cookie; a DB leak must not expose usable sessions.
+const hashToken = (value) => crypto.createHash("sha256").update(String(value)).digest("hex");
+
 // Public registration must NEVER create a privileged account. Any client-sent
 // privileged role is forced back to the default client role.
 const sanitizePublicRole = (role) => {
@@ -248,7 +252,7 @@ const loginUserCtrl = asyncHandler(async (req, res) => {
   }
 
   const refreshToken = await generateRefreshToken(findUser._id);
-  await userRepository.updateById(findUser._id, { refresh_token: refreshToken });
+  await userRepository.updateById(findUser._id, { refresh_token: hashToken(refreshToken) });
   res.cookie("refreshToken", refreshToken, { httpOnly: true, maxAge: 72 * 60 * 60 * 1000 });
 
   res.json({
@@ -266,7 +270,7 @@ const loginUserCtrl = asyncHandler(async (req, res) => {
 const handleRefreshToken = asyncHandler(async (req, res) => {
   const cookie = req.cookies;
   if (!cookie?.refreshToken) throw new Error("No Refresh Token in Cookies");
-  const user = await userRepository.findOneByRefreshToken(cookie.refreshToken);
+  const user = await userRepository.findOneByRefreshToken(hashToken(cookie.refreshToken));
   if (!user) throw new Error(" No Refresh token present in db or not matched");
 
   jwt.verify(cookie.refreshToken, process.env.JWT_SECRET, (err, decoded) => {
@@ -278,7 +282,7 @@ const handleRefreshToken = asyncHandler(async (req, res) => {
 const logout = asyncHandler(async (req, res) => {
   const cookie = req.cookies;
   if (!cookie?.refreshToken) throw new Error("No Refresh Token in Cookies");
-  const user = await userRepository.findOneByRefreshToken(cookie.refreshToken);
+  const user = await userRepository.findOneByRefreshToken(hashToken(cookie.refreshToken));
   if (user) await userRepository.updateById(user._id, { refresh_token: "" });
   res.clearCookie("refreshToken", { httpOnly: true, secure: true });
   res.sendStatus(204);

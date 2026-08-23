@@ -7,9 +7,11 @@ const {
     getPackage,
     getAllPackages,
 } = require("../controllers/PackageController");
-router.post("/", createPackage);
-router.put("/:id", updatePackage);
-router.delete("/:id", deletePackage);
+const { authMiddleware, isAdmin } = require("../middlewares/authMiddleware");
+
+router.post("/", authMiddleware, isAdmin, createPackage);
+router.put("/:id", authMiddleware, isAdmin, updatePackage);
+router.delete("/:id", authMiddleware, isAdmin, deletePackage);
 
 router.get("/:id", getPackage);
 

@@ -4,10 +4,11 @@ const { authMiddleware, isAdmin } = require("../middlewares/authMiddleware");
 
 
 const router = express.Router();
-router.post('/', createDocument );
-router.post('/upload', uploadImage,authMiddleware, isAdmin );
-router.delete('/image/:id', deleteImage,authMiddleware, isAdmin );
-router.get("/",getDocuments)
-router.put("/:id", updateDocumentStatus,authMiddleware, isAdmin )
+// NOTE: auth middleware must run BEFORE any controller handler.
+router.post('/', authMiddleware, createDocument);
+router.post('/upload', authMiddleware, isAdmin, uploadImage);
+router.delete('/image/:id', authMiddleware, isAdmin, deleteImage);
+router.get("/", getDocuments)
+router.put("/:id", authMiddleware, isAdmin, updateDocumentStatus)
 
 module.exports = router;

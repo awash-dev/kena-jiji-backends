@@ -563,10 +563,12 @@ const getMonthWiseOrderIncome = asyncHandler(async (req, res) => res.json(await 
 const getYearlyTotalOrder = asyncHandler(async (req, res) => res.json(await orderRepository.yearlyTotals()));
 
 const getUsersByRole = asyncHandler(async (req, res) => {
-  if (!req.query.role) return res.status(400).json({ message: "Role query parameter is required" });
-  const users = await userRepository.findByRole(req.query.role);
-  if (!users.length) return res.status(404).json({ message: `No users found with role ${req.query.role}` });
-  res.status(200).json({ success: true, users });
+  const role = String(req.query.role || "").trim();
+  if (!role) return res.status(400).json({ message: "Role query parameter is required" });
+  const users = (role.toLowerCase() === "all")
+    ? await userRepository.findAll()
+    : await userRepository.findByRole(role);
+  res.status(200).json({ success: true, users: users || [] });
 });
 
 const getSupportUser = asyncHandler(async (req, res) => {

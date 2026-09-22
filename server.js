@@ -109,6 +109,24 @@ app.get("/", (req, res) => {
     });
 });
 
+// Public Privacy Policy endpoint
+app.get(["/privacy", "/privacy-policy", "/api/privacy", "/api/privacy-policy"], (req, res) => {
+    res.json({
+        success: true,
+        title: "KENA E-Commerce Privacy Policy",
+        lastUpdated: "2025-04-30",
+        compliance: [
+            "Electronic Transaction Proclamation No. 1185/2020",
+            "Commercial Registration Directive 935/2022",
+            "National Bank of Ethiopia (NBE) data rules"
+        ],
+        contact: {
+            email: "support@kenashop.com",
+            phones: ["+251 905 042 4520", "+251 905 046 2300"]
+        }
+    });
+});
+
 // API Routes
 app.use("/api/user", UserRouter);
 app.use('/api/product', ProductRouter);

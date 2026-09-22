@@ -74,3 +74,5 @@ ehthumbs.db
 *.bak
 *.tmp
 *.iml
+*.exe
+*.bat

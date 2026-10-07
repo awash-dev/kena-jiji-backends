@@ -2,6 +2,7 @@ const express = require("express");
 const {
   createUser,
   createAppUser,
+  createUserByAdmin,
   verifyEmail,
   resendOtp,
   forgotPassword,
@@ -42,6 +43,7 @@ const {
   getUsersByRole,
   getUserCount,
   changeUserRole,
+  changeUserVerification,
   getProfile,
   getSupportUser,
 
@@ -87,6 +89,12 @@ router.get("/support-user", authMiddleware, getSupportUser);
 
 // Super Admin only: change a user's role
 router.put("/role/:id", authMiddleware, isSuperAdmin, changeUserRole);
+// Super Admin / Admin: change a user's email verification status
+router.put("/verification/:id", authMiddleware, isSuperAdminOrAdmin, changeUserVerification);
+
+// Super Admin / Admin: manually create a user (same fields as the app
+// signup, plus role / password / email-verified chosen by the admin).
+router.post("/admin/users", authMiddleware, isSuperAdminOrAdmin, createUserByAdmin);
 
 router.post("/register", createUser);
 router.post("/appRegister", createAppUser);

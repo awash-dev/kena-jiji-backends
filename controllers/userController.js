@@ -84,11 +84,20 @@ const createAppUser = asyncHandler(async (req, res) => {
     email_verification_expires: verification.expiresAt,
   });
 
-  await sendEmail({
-    email: newUser.email,
-    subject: "Email Verification OTP",
-    message: `Your OTP for email verification is: ${verification.otp}`,
-  });
+  // Send the OTP email for real (awaited). If the email never leaves the
+  // server, roll the user back so registration can be retried instead of
+  // leaving an unverified account nobody can verify.
+  try {
+    await sendEmail({
+      email: newUser.email,
+      subject: "Email Verification OTP",
+      message: `Your OTP for email verification is: ${verification.otp}\nThis code expires in 10 minutes.`,
+    });
+  } catch (emailError) {
+    console.error("Verification email failed:", emailError.message);
+    await userRepository.deleteById(newUser._id);
+    throw new Error("Could not send the verification email. Please try again.");
+  }
 
   res.status(201).json({
     success: true,
@@ -167,11 +176,16 @@ const resendOtp = async (req, res) => {
       email_verification_expires: verification.expiresAt,
     });
 
-    await sendEmail({
-      email: user.email,
-      subject: "Email Verification OTP",
-      message: `Your new OTP for email verification is: ${verification.otp}`,
-    });
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: "Email Verification OTP",
+        message: `Your new OTP for email verification is: ${verification.otp}\nThis code expires in 10 minutes.`,
+      });
+    } catch (emailError) {
+      console.error("Resend OTP email failed:", emailError.message);
+      return res.status(500).json({ message: "Could not send the verification email. Please try again." });
+    }
 
     res.status(200).json({ message: "A new OTP has been sent to your email." });
   } catch (error) {
@@ -180,22 +194,36 @@ const resendOtp = async (req, res) => {
 };
 
 const forgotPassword = asyncHandler(async (req, res) => {
-  const user = await userRepository.findOneByEmail(req.body.email);
+  const email = String(req.body.email || "").toLowerCase().trim();
+  if (!email) return res.status(400).json({ message: "Email is required" });
+
+  const user = await userRepository.findOneByEmail(email);
   if (!user) return res.status(404).json({ message: "User not found" });
 
-  const otpPassword = generateOTPPassword();
+  // Only store a reset OTP - the user's existing password is left untouched
+  // until the OTP is proven (see resetPassword below).
   const passwordReset = createHashedOTP();
-  const token = generateToken(user._id);
-  const resetUrl = `${process.env.base_url}reset-password?token=${token}`;
-
   await userRepository.updateById(user._id, {
-    password: await hashPassword(otpPassword),
     password_reset_otp: passwordReset.hashedOtp,
     password_reset_expires: passwordReset.expiresAt,
   });
 
-  const message = `Your OTP for email verification is: ${passwordReset.otp}\n${resetUrl}\nYour temporary password is: ${otpPassword}`;
-  await sendEmail({ email: user.email, subject: "Password Reset OTP", message });
+  try {
+    await sendEmail({
+      email: user.email,
+      subject: "Password Reset OTP",
+      message: `Your OTP to reset your password is: ${passwordReset.otp}\nThis code expires in 10 minutes.`,
+    });
+  } catch (emailError) {
+    console.error("Password reset email failed:", emailError.message);
+    // The email never left the server - invalidate the OTP so it cannot be used.
+    await userRepository.updateById(user._id, {
+      password_reset_otp: null,
+      password_reset_expires: null,
+    });
+    throw new Error("Could not send the reset code email. Please try again.");
+  }
+
   res.status(200).json({ message: "OTP has been sent to your email." });
 });
 
@@ -213,15 +241,28 @@ const verifyOTP = asyncHandler(async (req, res) => {
 });
 
 const resetPassword = asyncHandler(async (req, res) => {
-  const { email, newPassword } = req.body;
+  const { email, otp, newPassword } = req.body;
+  if (!email || !otp || !newPassword) {
+    return res.status(400).json({ message: "Email, OTP and new password are required" });
+  }
+
   const user = await userRepository.findOneByEmail(email);
   if (!user) return res.status(404).json({ message: "User not found" });
-  if (!newPassword) return res.status(400).json({ message: "New password is required" });
+
+  // The OTP must be proven before the password is ever changed.
+  const hashedOTP = crypto.createHash("sha256").update(String(otp)).digest("hex");
+  const isExpired =
+    !user.passwordResetExpires || Date.now() > new Date(user.passwordResetExpires).getTime();
+  if (!user.passwordResetOtp || user.passwordResetOtp !== hashedOTP || isExpired) {
+    return res.status(400).json({ message: "Invalid or expired OTP" });
+  }
 
   await userRepository.updateById(user._id, {
     password: await hashPassword(newPassword),
     password_reset_otp: null,
     password_reset_expires: null,
+    password_changed_at: new Date(),
+    refresh_token: null,
   });
 
   res.status(200).json({ message: "Password reset successfully. You can now log in." });
@@ -346,6 +387,26 @@ const changeUserRole = asyncHandler(async (req, res) => {
     success: true,
     message: `Role updated to ${role}`,
     user: updated,
+  });
+});
+
+const changeUserVerification = asyncHandler(async (req, res) => {
+  validateMongoDbId(req.params.id);
+  const { isEmailVerified } = req.body;
+
+  if (typeof isEmailVerified !== "boolean") {
+    return res.status(400).json({ message: "isEmailVerified must be a boolean" });
+  }
+
+  const user = await userRepository.updateById(req.params.id, {
+    is_email_verified: isEmailVerified,
+  });
+  if (!user) return res.status(404).json({ message: "User not found" });
+
+  res.status(200).json({
+    success: true,
+    message: `Email ${isEmailVerified ? "verified" : "unverified"} successfully`,
+    user,
   });
 });
 
@@ -617,9 +678,57 @@ const getUserCount = async (req, res) => {
   }
 };
 
+// Admin manually creates a user: same fields the Flutter signup collects,
+// but the admin also chooses the role, the password and whether the email
+// is already verified. The row lands in the DB immediately (no OTP email).
+const createUserByAdmin = asyncHandler(async (req, res) => {
+  const { firstname, lastname, email, mobile, role, password, isEmailVerified } = req.body;
+  const normalizedEmail = String(email || "").toLowerCase().trim();
+
+  if (!String(firstname || "").trim() || !String(lastname || "").trim()) {
+    return res.status(400).json({ message: "First name and last name are required" });
+  }
+  if (!normalizedEmail) return res.status(400).json({ message: "Email is required" });
+  if (!password || String(password).length < 6) {
+    return res.status(400).json({ message: "Password must be at least 6 characters" });
+  }
+
+  const existingUser = await userRepository.findOneByEmail(normalizedEmail);
+  if (existingUser) return res.status(400).json({ message: "User already exists with this email." });
+
+  const allowedRoles = [...ASSIGNABLE_ROLES, ROLES.SUPER_ADMIN];
+  const finalRole = allowedRoles.includes(role) ? role : ROLES.USER;
+
+  const newUser = await userRepository.create({
+    firstname: String(firstname).trim(),
+    lastname: String(lastname).trim(),
+    email: normalizedEmail,
+    mobile: String(mobile || "").trim(),
+    role: finalRole,
+    password: await hashPassword(password),
+    is_email_verified: isEmailVerified === true,
+  });
+
+  res.status(201).json({
+    success: true,
+    message: "User created successfully",
+    user: {
+      _id: newUser._id,
+      firstname: newUser.firstname,
+      lastname: newUser.lastname,
+      email: newUser.email,
+      mobile: newUser.mobile,
+      role: newUser.role,
+      is_email_verified: newUser.is_email_verified,
+      created_at: newUser.created_at,
+    },
+  });
+});
+
 module.exports = {
   createUser,
   createAppUser,
+  createUserByAdmin,
   verifyEmail,
   resendOtp,
   forgotPassword,
@@ -661,5 +770,6 @@ module.exports = {
   getUsersByRole,
   getUserCount,
   changeUserRole,
+  changeUserVerification,
   getSupportUser,
 };

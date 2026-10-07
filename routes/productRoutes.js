@@ -16,7 +16,7 @@ const {
     AllfetchRecentProducts,
     NotApprovedProducts,
     RejectedProducts,
-    AllMerchantProducts,
+    AllEachMerchantProducts,
     getProductsByCategory,
 
 } = require("../controllers/productController");

@@ -49,18 +49,20 @@ dotenv.config();
 
 const PORT = process.env.PORT || 4000;
 
-// CORS Configuration - allow-list via CORS_ORIGINS env var.
-// Requests without an Origin header (mobile apps, curl) are always allowed;
-// browser origins must be listed in CORS_ORIGINS (comma-separated).
+// CORS Configuration - allow all origins by default (for local dev).
+// In production (Vercel), set CORS_ORIGINS env var to restrict to specific domains.
 const allowedOrigins = String(process.env.CORS_ORIGINS || "")
     .split(",")
     .map((o) => o.trim())
     .filter(Boolean);
 
 const corsOriginCheck = function (origin, callback) {
-    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-    }
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    // If no CORS_ORIGINS configured, allow all origins (dev-friendly)
+    if (allowedOrigins.length === 0) return callback(null, true);
+    // Otherwise check against allow-list
+    if (allowedOrigins.includes(origin)) return callback(null, true);
     return callback(null, false);
 };
 

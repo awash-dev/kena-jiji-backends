@@ -68,14 +68,10 @@ const corsOriginCheck = function (origin, callback) {
 
 app.use(cors({
     origin: corsOriginCheck,
-    methods: 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true,
-}));
-
-// Handle preflight requests
-app.options('*', cors({
-    origin: corsOriginCheck,
-    credentials: true
+    optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
 }));
 
 // Disable CDN / browser caching for API responses.
@@ -253,6 +249,7 @@ app.use((err, req, res, next) => {
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 });
+
 
 // Export app for Vercel Serverless deployment
 module.exports = app;

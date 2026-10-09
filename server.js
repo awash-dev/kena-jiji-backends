@@ -49,29 +49,55 @@ dotenv.config();
 
 const PORT = process.env.PORT || 4000;
 
-// CORS Configuration - allow all origins by default (for local dev).
-// In production (Vercel), set CORS_ORIGINS env var to restrict to specific domains.
+// CORS Configuration - allows localhost on any port for dev, all vercel deployments, and configured domains.
 const allowedOrigins = String(process.env.CORS_ORIGINS || "")
     .split(",")
     .map((o) => o.trim())
     .filter(Boolean);
 
-const corsOriginCheck = function (origin, callback) {
+const isAllowedOrigin = (origin) => {
     // Allow requests with no origin (mobile apps, curl, Postman)
-    if (!origin) return callback(null, true);
-    // If no CORS_ORIGINS configured, allow all origins (dev-friendly)
-    if (allowedOrigins.length === 0) return callback(null, true);
-    // Otherwise check against allow-list
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(null, false);
+    if (!origin) return true;
+    // Always allow localhost / 127.0.0.1 on any port (for dev & admin dashboard)
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
+    // Always allow Vercel domains (preview and production)
+    if (/^https:\/\/.*\.vercel\.app$/.test(origin)) return true;
+    // If CORS_ORIGINS configured, check against allow-list
+    if (allowedOrigins.length > 0) {
+        return allowedOrigins.includes(origin) || allowedOrigins.includes('*');
+    }
+    // Default to allow all
+    return true;
 };
 
+// Intercept preflight OPTIONS requests early and set CORS headers on all matching origins
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (isAllowedOrigin(origin)) {
+        if (origin) {
+            res.setHeader('Access-Control-Allow-Origin', origin);
+            res.setHeader('Access-Control-Allow-Credentials', 'true');
+        } else {
+            res.setHeader('Access-Control-Allow-Origin', '*');
+        }
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+        res.setHeader(
+            'Access-Control-Allow-Headers',
+            'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma'
+        );
+    }
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    next();
+});
+
 app.use(cors({
-    origin: corsOriginCheck,
+    origin: (origin, callback) => callback(null, isAllowedOrigin(origin)),
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control', 'Pragma'],
     credentials: true,
-    optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
+    optionsSuccessStatus: 200
 }));
 
 // Disable CDN / browser caching for API responses.

@@ -11,11 +11,11 @@ const sendEmail = async (options) => {
   
   // Define mail options
   const mailOptions = {
-    from: '"Merkato Shop" <' + process.env.EMAIL_USER + '>',
-    to: options.email,
+    from: '"Kena Shop" <' + process.env.EMAIL_USER + '>',
+    to: options.email || options.to,
     subject: options.subject,
-    text: options.message,
-    html: options.html || null,
+    text: options.message || options.text,
+    html: options.html || options.htm || null,
   };
   
   // Send email

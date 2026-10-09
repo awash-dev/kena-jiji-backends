@@ -9,13 +9,27 @@ const authMiddleware = asyncHandler(async (req, res, next) => {
     token = req.headers.authorization.split(" ")[1];
   }
 
-  if (!token) {
+  if (!token || token === "undefined" || token === "null" || token.trim() === "") {
     return res.status(401).json({ message: "No token provided in header." });
   }
 
+  let decoded;
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await userRepository.findById(decoded?.userId);
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
+  } catch (error) {
+    console.error("JWT Verification Error:", error.message || "Invalid or expired token");
+    return res
+      .status(401)
+      .json({ message: "Not Authorized, token expired or invalid. Please login again." });
+  }
+
+  try {
+    const userId = decoded?.userId || decoded?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Invalid token payload. Please login again." });
+    }
+
+    const user = await userRepository.findById(userId);
 
     if (!user) {
       return res.status(404).json({ message: "User not found. Please login again." });
@@ -28,10 +42,8 @@ const authMiddleware = asyncHandler(async (req, res, next) => {
     req.user = { ...user, id: user._id };
     next();
   } catch (error) {
-    console.error("JWT Verification Error:", error.message);
-    return res
-      .status(401)
-      .json({ message: "Not Authorized, token expired. Please login again." });
+    console.error("Auth User Lookup Error:", error.message);
+    return res.status(500).json({ message: "Internal server error during authorization." });
   }
 });
 

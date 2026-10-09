@@ -48,9 +48,25 @@ const createUser = asyncHandler(async (req, res) => {
 
   const token = generateToken(newUser._id);
   const resetUrl = `${process.env.base_url}reset-password?token=${token}`;
-  const message = `Your OTP for email verification is: ${emailVerification.otp}\nYour reset link is: ${resetUrl}\nYour temporary password is: ${otpPassword}`;
+  const message = `Welcome to Kena Shop!\n\nYour OTP for email verification is: ${emailVerification.otp}\nYour reset link is: ${resetUrl}\nYour temporary password is: ${otpPassword}\n\nThis code expires in 10 minutes.`;
 
-  await sendEmail({ email: normalizedEmail, subject: "Email Verification OTP", message });
+  await sendEmail({
+    email: normalizedEmail,
+    subject: "Kena Shop - Email Verification OTP",
+    message,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px;">
+        <h2 style="color: #be185d; margin-top: 0;">Welcome to Kena Shop</h2>
+        <p style="font-size: 15px; color: #334155;">Please verify your email address using the code below:</p>
+        <div style="background: #fdf2f8; border: 1px dashed #f472b6; padding: 18px; text-align: center; border-radius: 8px; margin: 24px 0;">
+          <span style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #be185d;">${emailVerification.otp}</span>
+        </div>
+        <p style="font-size: 13px; color: #64748b;">This code expires in 10 minutes. If you did not register for Kena Shop, please ignore this email.</p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+        <p style="font-size: 12px; color: #94a3b8; text-align: center;">© Kena Shop. All rights reserved.</p>
+      </div>
+    `,
+  });
 
   res.status(201).json({
     success: true,
@@ -70,7 +86,56 @@ const createAppUser = asyncHandler(async (req, res) => {
   const { firstname, lastname, email, password, mobile, role } = req.body;
   const normalizedEmail = email.toLowerCase().trim();
   const existingUser = await userRepository.findOneByEmail(normalizedEmail);
-  if (existingUser) throw new Error("User already exists with this email.");
+  if (existingUser) {
+    if (!existingUser.isEmailVerified) {
+      const verification = createHashedOTP();
+      await userRepository.updateById(existingUser._id, {
+        firstname: firstname || existingUser.firstname,
+        lastname: lastname || existingUser.lastname,
+        password: await hashPassword(password),
+        mobile: mobile || existingUser.mobile,
+        email_verification_otp: verification.hashedOtp,
+        email_verification_expires: verification.expiresAt,
+      });
+
+      try {
+        await sendEmail({
+          email: existingUser.email,
+          subject: "Kena Shop - Email Verification OTP",
+          message: `Welcome to Kena Shop!\n\nYour OTP for email verification is: ${verification.otp}\nThis code expires in 10 minutes.`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px;">
+              <h2 style="color: #be185d; margin-top: 0;">Welcome to Kena Shop</h2>
+              <p style="font-size: 15px; color: #334155;">Please verify your email address to complete your registration:</p>
+              <div style="background: #fdf2f8; border: 1px dashed #f472b6; padding: 18px; text-align: center; border-radius: 8px; margin: 24px 0;">
+                <span style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #be185d;">${verification.otp}</span>
+              </div>
+              <p style="font-size: 13px; color: #64748b;">This code expires in 10 minutes. If you did not request this, please ignore this email.</p>
+              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+              <p style="font-size: 12px; color: #94a3b8; text-align: center;">© Kena Shop. All rights reserved.</p>
+            </div>
+          `,
+        });
+      } catch (emailError) {
+        console.error("Verification email failed:", emailError.message);
+        throw new Error("Could not send the verification email. Please try again.");
+      }
+
+      return res.status(201).json({
+        success: true,
+        message: "User registered successfully. Please verify your email using the OTP sent to your email.",
+        user: {
+          _id: existingUser._id,
+          firstname: existingUser.firstname,
+          lastname: existingUser.lastname,
+          email: existingUser.email,
+          mobile: existingUser.mobile,
+          role: existingUser.role,
+        },
+      });
+    }
+    throw new Error("User already exists with this email.");
+  }
 
   const verification = createHashedOTP();
   const newUser = await userRepository.create({
@@ -90,8 +155,20 @@ const createAppUser = asyncHandler(async (req, res) => {
   try {
     await sendEmail({
       email: newUser.email,
-      subject: "Email Verification OTP",
-      message: `Your OTP for email verification is: ${verification.otp}\nThis code expires in 10 minutes.`,
+      subject: "Kena Shop - Email Verification OTP",
+      message: `Welcome to Kena Shop!\n\nYour OTP for email verification is: ${verification.otp}\nThis code expires in 10 minutes.`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px;">
+          <h2 style="color: #be185d; margin-top: 0;">Welcome to Kena Shop</h2>
+          <p style="font-size: 15px; color: #334155;">Please verify your email address to complete your registration:</p>
+          <div style="background: #fdf2f8; border: 1px dashed #f472b6; padding: 18px; text-align: center; border-radius: 8px; margin: 24px 0;">
+            <span style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #be185d;">${verification.otp}</span>
+          </div>
+          <p style="font-size: 13px; color: #64748b;">This code expires in 10 minutes. If you did not request this, please ignore this email.</p>
+          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+          <p style="font-size: 12px; color: #94a3b8; text-align: center;">© Kena Shop. All rights reserved.</p>
+        </div>
+      `,
     });
   } catch (emailError) {
     console.error("Verification email failed:", emailError.message);
@@ -141,21 +218,40 @@ const changePassword = async (req, res) => {
 const verifyEmail = async (req, res) => {
   try {
     const { email, otp } = req.body;
-    const user = await userRepository.findOneByEmail(email);
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email and OTP are required" });
+    }
+    const normalizedEmail = String(email).toLowerCase().trim();
+    const user = await userRepository.findOneByEmail(normalizedEmail);
     if (!user || !user.emailVerificationExpires || new Date(user.emailVerificationExpires).getTime() <= Date.now()) {
       return res.status(400).json({ message: "OTP is invalid or has expired" });
     }
 
-    const hashedOTP = crypto.createHash("sha256").update(otp).digest("hex");
+    const hashedOTP = crypto.createHash("sha256").update(String(otp).trim()).digest("hex");
     if (hashedOTP !== user.emailVerificationOtp) return res.status(400).json({ message: "Incorrect OTP" });
 
+    const refreshToken = await generateRefreshToken(user._id);
     await userRepository.updateById(user._id, {
       is_email_verified: true,
       email_verification_otp: null,
       email_verification_expires: null,
+      refresh_token: hashToken(refreshToken),
     });
+    res.cookie("refreshToken", refreshToken, { httpOnly: true, maxAge: 72 * 60 * 60 * 1000 });
 
-    res.status(200).json({ message: "Email verified successfully" });
+    res.status(200).json({
+      success: true,
+      message: "Email verified successfully",
+      _id: user._id,
+      firstname: user.firstname,
+      lastname: user.lastname,
+      email: user.email,
+      mobile: user.mobile,
+      role: user.role,
+      profile_picture: user.profilePicture || user.profile_picture || [],
+      token: generateToken(user._id),
+      refreshToken,
+    });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -179,8 +275,20 @@ const resendOtp = async (req, res) => {
     try {
       await sendEmail({
         email: user.email,
-        subject: "Email Verification OTP",
-        message: `Your new OTP for email verification is: ${verification.otp}\nThis code expires in 10 minutes.`,
+        subject: "Kena Shop - Email Verification OTP",
+        message: `Welcome to Kena Shop!\n\nYour new OTP for email verification is: ${verification.otp}\nThis code expires in 10 minutes.`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px;">
+            <h2 style="color: #be185d; margin-top: 0;">Kena Shop</h2>
+            <p style="font-size: 15px; color: #334155;">Here is your new verification code:</p>
+            <div style="background: #fdf2f8; border: 1px dashed #f472b6; padding: 18px; text-align: center; border-radius: 8px; margin: 24px 0;">
+              <span style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #be185d;">${verification.otp}</span>
+            </div>
+            <p style="font-size: 13px; color: #64748b;">This code expires in 10 minutes.</p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+            <p style="font-size: 12px; color: #94a3b8; text-align: center;">© Kena Shop. All rights reserved.</p>
+          </div>
+        `,
       });
     } catch (emailError) {
       console.error("Resend OTP email failed:", emailError.message);
@@ -211,8 +319,20 @@ const forgotPassword = asyncHandler(async (req, res) => {
   try {
     await sendEmail({
       email: user.email,
-      subject: "Password Reset OTP",
-      message: `Your OTP to reset your password is: ${passwordReset.otp}\nThis code expires in 10 minutes.`,
+      subject: "Kena Shop - Password Reset OTP",
+      message: `Kena Shop Password Reset\n\nYour OTP to reset your password is: ${passwordReset.otp}\nThis code expires in 10 minutes.`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px;">
+          <h2 style="color: #be185d; margin-top: 0;">Kena Shop - Password Reset</h2>
+          <p style="font-size: 15px; color: #334155;">You requested to reset your password. Use the verification code below:</p>
+          <div style="background: #fdf2f8; border: 1px dashed #f472b6; padding: 18px; text-align: center; border-radius: 8px; margin: 24px 0;">
+            <span style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #be185d;">${passwordReset.otp}</span>
+          </div>
+          <p style="font-size: 13px; color: #64748b;">This code expires in 10 minutes. If you did not make this request, please ignore this email.</p>
+          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+          <p style="font-size: 12px; color: #94a3b8; text-align: center;">© Kena Shop. All rights reserved.</p>
+        </div>
+      `,
     });
   } catch (emailError) {
     console.error("Password reset email failed:", emailError.message);
@@ -246,11 +366,12 @@ const resetPassword = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: "Email, OTP and new password are required" });
   }
 
-  const user = await userRepository.findOneByEmail(email);
+  const normalizedEmail = String(email).toLowerCase().trim();
+  const user = await userRepository.findOneByEmail(normalizedEmail);
   if (!user) return res.status(404).json({ message: "User not found" });
 
   // The OTP must be proven before the password is ever changed.
-  const hashedOTP = crypto.createHash("sha256").update(String(otp)).digest("hex");
+  const hashedOTP = crypto.createHash("sha256").update(String(otp).trim()).digest("hex");
   const isExpired =
     !user.passwordResetExpires || Date.now() > new Date(user.passwordResetExpires).getTime();
   if (!user.passwordResetOtp || user.passwordResetOtp !== hashedOTP || isExpired) {
@@ -263,6 +384,9 @@ const resetPassword = asyncHandler(async (req, res) => {
     password_reset_expires: null,
     password_changed_at: new Date(),
     refresh_token: null,
+    is_email_verified: true,
+    email_verification_otp: null,
+    email_verification_expires: null,
   });
 
   res.status(200).json({ message: "Password reset successfully. You can now log in." });
@@ -274,15 +398,55 @@ const loginUserCtrl = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("Email and password are required");
   }
-  const findUser = await userRepository.findOneByEmail(email);
+  const normalizedEmail = String(email).toLowerCase().trim();
+  const findUser = await userRepository.findOneByEmail(normalizedEmail);
   if (!findUser) {
     res.status(401);
     throw new Error("Invalid Credentials");
   }
+
+  // 1. Unverified accounts cannot access the system
   if (!findUser.isEmailVerified) {
-    res.status(401);
-    throw new Error("Please verify your email before logging in.");
+    const isExpired =
+      !findUser.emailVerificationExpires ||
+      new Date(findUser.emailVerificationExpires).getTime() <= Date.now();
+    if (!findUser.emailVerificationOtp || isExpired) {
+      const verification = createHashedOTP();
+      await userRepository.updateById(findUser._id, {
+        email_verification_otp: verification.hashedOtp,
+        email_verification_expires: verification.expiresAt,
+      });
+      try {
+        await sendEmail({
+          email: findUser.email,
+          subject: "Kena Shop - Email Verification OTP",
+          message: `Welcome to Kena Shop!\n\nYour OTP for email verification is: ${verification.otp}\nThis code expires in 10 minutes.`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px;">
+              <h2 style="color: #be185d; margin-top: 0;">Welcome to Kena Shop</h2>
+              <p style="font-size: 15px; color: #334155;">Please verify your email address to complete your registration:</p>
+              <div style="background: #fdf2f8; border: 1px dashed #f472b6; padding: 18px; text-align: center; border-radius: 8px; margin: 24px 0;">
+                <span style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #be185d;">${verification.otp}</span>
+              </div>
+              <p style="font-size: 13px; color: #64748b;">This code expires in 10 minutes. If you did not request this, please ignore this email.</p>
+              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+              <p style="font-size: 12px; color: #94a3b8; text-align: center;">© Kena Shop. All rights reserved.</p>
+            </div>
+          `,
+        });
+      } catch (err) {
+        console.error("Auto-resend email verification failed:", err.message);
+      }
+    }
+
+    return res.status(401).json({
+      success: false,
+      isEmailVerified: false,
+      email: findUser.email,
+      message: "Please verify your email before logging in. A verification code has been sent to your email.",
+    });
   }
+
   if (findUser.isBlocked) {
     res.status(403);
     throw new Error("Your account has been blocked. Please contact support.");
@@ -493,9 +657,18 @@ const forgotPasswordToken = asyncHandler(async (req, res) => {
   });
   sendEmail({
     to: req.body.email,
-    text: "Hey User",
-    subject: "Forgot Password Link",
-    htm: `Hi, Please follow this link to reset Your Password. This link is valid till 10 minutes from now. <a href='http://localhost:3000/reset-password/${token}'>Click Here</>`,
+    subject: "Kena Shop - Reset Password Link",
+    text: `Hi, Please follow this link to reset your password: ${process.env.base_url || 'http://localhost:3000/'}reset-password/${token}\nThis link is valid for 10 minutes.`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px;">
+        <h2 style="color: #be185d; margin-top: 0;">Kena Shop - Password Reset</h2>
+        <p style="font-size: 15px; color: #334155;">Please follow the link below to reset your password:</p>
+        <p style="margin: 24px 0;"><a href="${process.env.base_url || 'http://localhost:3000/'}reset-password/${token}" style="background: #be185d; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Reset Password</a></p>
+        <p style="font-size: 13px; color: #64748b;">This link is valid for 10 minutes.</p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+        <p style="font-size: 12px; color: #94a3b8; text-align: center;">© Kena Shop. All rights reserved.</p>
+      </div>
+    `,
   });
   res.json(token);
 });

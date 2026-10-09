@@ -49,7 +49,7 @@ dotenv.config();
 
 const PORT = process.env.PORT || 4000;
 
-// CORS Configuration - allows localhost on any port for dev, all vercel deployments, and configured domains.
+// CORS Configuration - allows localhost on any port for dev, all vercel deployments, pulseaddis domains, and configured domains.
 const allowedOrigins = String(process.env.CORS_ORIGINS || "")
     .split(",")
     .map((o) => o.trim())
@@ -59,12 +59,24 @@ const isAllowedOrigin = (origin) => {
     // Allow requests with no origin (mobile apps, curl, Postman)
     if (!origin) return true;
     // Always allow localhost / 127.0.0.1 on any port (for dev & admin dashboard)
-    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return true;
     // Always allow Vercel domains (preview and production)
-    if (/^https:\/\/.*\.vercel\.app$/.test(origin)) return true;
+    if (/^https?:\/\/.*\.vercel\.app(:\d+)?$/i.test(origin)) return true;
+    // Always allow pulseaddis domains (production dashboard, shop, etc.)
+    if (/^https?:\/\/([a-z0-9-]+\.)*pulseaddis\.com(:\d+)?$/i.test(origin)) return true;
+    // Always allow kenashop / kena domains
+    if (/^https?:\/\/([a-z0-9-]+\.)*(kenashop|kena-ecommerce)\.com(:\d+)?$/i.test(origin)) return true;
     // If CORS_ORIGINS configured, check against allow-list
     if (allowedOrigins.length > 0) {
-        return allowedOrigins.includes(origin) || allowedOrigins.includes('*');
+        if (allowedOrigins.includes('*')) return true;
+        return allowedOrigins.some((allowed) => {
+            if (allowed === origin) return true;
+            if (allowed.includes('*')) {
+                const pattern = new RegExp('^' + allowed.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$', 'i');
+                return pattern.test(origin);
+            }
+            return false;
+        });
     }
     // Default to allow all
     return true;
@@ -81,10 +93,12 @@ app.use((req, res, next) => {
             res.setHeader('Access-Control-Allow-Origin', '*');
         }
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+        const reqHeaders = req.headers['access-control-request-headers'];
         res.setHeader(
             'Access-Control-Allow-Headers',
-            'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma'
+            reqHeaders || 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma'
         );
+        res.setHeader('Access-Control-Max-Age', '86400');
     }
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
@@ -292,7 +306,7 @@ if (!process.env.VERCEL) {
 
     const io = require("socket.io")(server, {
         cors: {
-            origin: corsOriginCheck,
+            origin: (origin, callback) => callback(null, isAllowedOrigin(origin)),
             methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
             credentials: true
         }
